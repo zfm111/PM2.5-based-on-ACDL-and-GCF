@@ -210,6 +210,10 @@ print(f"Valid layers: {valid_count}")
 print(f"R²  : mean={np.nanmean(r2_per_alt):.4f}, std={np.nanstd(r2_per_alt):.4f}")
 print(f"RMSE: mean={np.nanmean(rmse_per_alt):.6f}, std={np.nanstd(rmse_per_alt):.6f}")
 print(f"MAE : mean={np.nanmean(mae_per_alt):.6f}, std={np.nanstd(mae_per_alt):.6f}")
+# 在评估部分添加：
+print("\n[对齐验证] 前5个样本的第0层（最低层）真实值与预测值：")
+print("真实值:", true_actual[:5, 0])
+print("预测值:", pred_actual[:15, 0])
 
 # 按高度区间统计
 altitude_ranges = [(0, 3), (3, 10), (10, 20)]
@@ -267,6 +271,75 @@ df = pd.DataFrame({
 })
 df.to_csv('per_altitude_metrics.csv', index=False)
 print("Metrics saved to 'per_altitude_metrics.csv'")
+    # ============================================================
+    # 添加：预测值与真实值的统计分布对比
+    # ============================================================
+print("\n" + "="*60)
+print("  预测值 vs 真实值 统计分布")
+print("="*60)
+
+# --- 1. 全局统计（展平所有高度层） ---
+true_flat = true_actual.ravel()
+pred_flat = pred_actual.ravel()
+
+print("\n[全局统计] (所有高度层 × 所有样本)")
+print(f"  真实值: 均值={true_flat.mean():.6f}, 标准差={true_flat.std():.6f}")
+print(f"          min={true_flat.min():.6f}, max={true_flat.max():.6f}")
+print(f"  预测值: 均值={pred_flat.mean():.6f}, 标准差={pred_flat.std():.6f}")
+print(f"          min={pred_flat.min():.6f}, max={pred_flat.max():.6f}")
+print(f"  均值偏差 (预测 - 真实): {pred_flat.mean() - true_flat.mean():.6f}")
+
+# --- 2. 分层统计（按高度区间） ---
+alt_ranges = [(0, 3, "0-3 km"), (3, 10, "3-10 km"), (10, 20, "10-20 km")]
+print("\n[分层统计]")
+for low, high, label in alt_ranges:
+    idx = (ProfileAlti >= low) & (ProfileAlti < high)
+    if idx.sum() == 0:
+        continue
+    true_layer = true_actual[:, idx].ravel()
+    pred_layer = pred_actual[:, idx].ravel()
+    print(f"  {label}:")
+    print(f"    真实值: 均值={true_layer.mean():.6f}, 标准差={true_layer.std():.6f}")
+    print(f"    预测值: 均值={pred_layer.mean():.6f}, 标准差={pred_layer.std():.6f}")
+    print(f"    标准差比值 (预测/真实): {pred_layer.std() / (true_layer.std() + 1e-8):.4f}")
+
+# --- 3. 每个样本的廓线统计 ---
+true_sample_mean = true_actual.mean(axis=1)
+true_sample_std = true_actual.std(axis=1)
+pred_sample_mean = pred_actual.mean(axis=1)
+pred_sample_std = pred_actual.std(axis=1)
+
+print("\n[每个样本的廓线统计]")
+print(f"  真实廓线均值: 平均={true_sample_mean.mean():.6f}, 标准差={true_sample_mean.std():.6f}")
+print(f"  预测廓线均值: 平均={pred_sample_mean.mean():.6f}, 标准差={pred_sample_mean.std():.6f}")
+print(f"  真实廓线标准差: 平均={true_sample_std.mean():.6f}, 标准差={true_sample_std.std():.6f}")
+print(f"  预测廓线标准差: 平均={pred_sample_std.mean():.6f}, 标准差={pred_sample_std.std():.6f}")
+
+# --- 4. 关键诊断：预测值是否过于集中 ---
+ratio_mean = pred_sample_mean / (true_sample_mean + 1e-8)
+ratio_std = pred_sample_std / (true_sample_std + 1e-8)
+print("\n[诊断指标]")
+print(f"  预测/真实 廓线均值比值: 平均={ratio_mean.mean():.4f}, 中位={np.median(ratio_mean):.4f}")
+print(f"  预测/真实 廓线标准差比值: 平均={ratio_std.mean():.4f}, 中位={np.median(ratio_std):.4f}")
+print(f"  预测值接近 0 (<1e-6) 的比例: {(np.abs(pred_flat) < 1e-6).mean() * 100:.2f}%")
+print(f"  预测值绝对值 < 0.001 的比例: {(np.abs(pred_flat) < 0.001).mean() * 100:.2f}%")
+
+# --- 5. 判断结论 ---
+print("\n[结论]")
+if ratio_std.mean() < 0.5:
+    print("  ⚠️ 预测廓线的标准差远小于真实值 (比值 < 0.5)")
+    print("  → 模型预测值过于集中，趋向于平均廓线")
+    print("  → 建议：补充相对湿度(RH)、边界层高度(PBLH)等物理特征")
+elif ratio_std.mean() < 0.8:
+    print("  ⚠️ 预测廓线的标准差略小于真实值 (比值 < 0.8)")
+    print("  → 模型有一定预测能力，但变异性不足")
+    print("  → 建议：尝试增加模型容量或调整学习率")
+else:
+    print("  ✅ 预测廓线的标准差与真实值接近 (比值 > 0.8)")
+    print("  → 模型成功捕捉了样本间的变异性！")
+
+print("\n" + "="*60)
+
 
 if CONFIG['save_model']:
     torch.save({
