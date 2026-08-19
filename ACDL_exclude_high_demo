@@ -1,0 +1,521 @@
+"""
+train_midlow_original.py
+基于原脚本数据清洗逻辑，只使用中低层（0~10 km）进行训练
+- 完整复用 load_data 函数（含 SG 平滑、样条插值等）
+- 动态调整模型输出层大小
+- 输出逐高度精度指标
+"""
+
+import os
+import numpy as np
+import matplotlib.pyplot as plt
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+from torch.utils.data import DataLoader, TensorDataset
+from sklearn.preprocessing import StandardScaler
+from sklearn.metrics import r2_score, mean_squared_error, mean_absolute_error
+import h5py
+from scipy.interpolate import CubicSpline
+from scipy.signal import savgol_filter
+import warnings
+warnings.filterwarnings('ignore')
+
+# ============================================================
+# 0. 配置（请修改为您的实际路径）
+# ============================================================
+CONFIG = {
+    'mat_file': r'C:/Users/admin/Desktop/Main_ACDL_ERA5_SpatiotemporalAttention_DL/ACDL_ERA5_Matched_20220601.mat',
+    'device': 'cuda' if torch.cuda.is_available() else 'cpu',
+    'seed': 42,
+    'batch_size': 256,
+    'epochs': 80,
+    'lr': 1e-4,
+    'weight_decay': 1e-3,
+    'dropout': 0.3,
+    'test_ratio': 0.2,
+    'max_altitude_km': 10.0,
+    'ext_clip_min': -0.01,
+    'ext_clip_max': 50.0,
+    'sg_window': 11,
+    'sg_order': 2,
+    'VALID_STD_THRESHOLD': 1e-4,
+}
+
+torch.manual_seed(CONFIG['seed'])
+np.random.seed(CONFIG['seed'])
+print(f"Device: {CONFIG['device']}")
+
+# ============================================================
+# 1. 完整的数据加载函数（直接从原脚本复制，包含所有清洗步骤）
+# ============================================================
+def load_data(mat_file: str):
+    """完整复制原脚本的 load_data 函数（包含所有数据清洗）"""
+    print(f"\n[1/6] Loading (HDF5/v7.3): {mat_file} ...")
+
+    with h5py.File(mat_file, 'r') as f:
+        print(f"  Top-level keys    : {list(f.keys())}")
+        mr = f['MatchResult']
+        print(f"  MatchResult fields: {list(mr.keys())}")
+
+        Data = mr['Data'][()]
+        print(f"  Data raw shape    : {Data.shape}  (will transpose if needed)")
+        if Data.ndim == 2 and Data.shape[0] < Data.shape[1]:
+            Data = Data.T
+        Data = Data.astype(np.float64)
+        print(f"  Data final        : {Data.shape}")
+
+        ProfileAlti = mr['ProfileAlti'][()].ravel().astype(np.float32)
+        print(f"  ProfileAlti       : {ProfileAlti.shape}, "
+              f"[{ProfileAlti.min():.2f}, {ProfileAlti.max():.2f}] km")
+
+        try:
+            vn_refs = mr['VarNames'][()].ravel()
+            VarNames = [''.join(chr(c) for c in f[ref][()].ravel()) for ref in vn_refs]
+            print(f"  VarNames[:10]     : {VarNames[:10]}")
+        except Exception as e:
+            print(f"  VarNames skipped  ({e})")
+
+    X_raw = Data[:, :8].astype(np.float32)
+    y_raw = Data[:, 8:].astype(np.float32)
+
+    # ==============================================================
+    # Step A：统计原始 NaN 情况
+    # ==============================================================
+    print(f"\n  ── Step A: 原始 NaN 统计 ──")
+    print(f"    X_raw : {np.isnan(X_raw).sum():>8d} 个 NaN")
+    print(f"    y_raw : {np.isnan(y_raw).sum():>8d} 个 NaN  "
+          f"(含 NaN 的行: {np.isnan(y_raw).any(axis=1).sum()})")
+
+    y_valid_vals = y_raw[~np.isnan(y_raw)]
+    if len(y_valid_vals) > 0:
+        pcts = np.nanpercentile(y_valid_vals, [0.1, 1, 5, 50, 95, 99, 99.9])
+        print(f"    非NaN值百分位 [0.1,1,5,50,95,99,99.9]%:")
+        print(f"      {pcts.round(6)}")
+
+    # ==============================================================
+    # Step B：物理范围 clip
+    # ==============================================================
+    print(f"\n  ── Step B: 物理范围 clip ──")
+    ext_min = CONFIG['ext_clip_min']
+    ext_max = CONFIG['ext_clip_max']
+    print(f"    设定范围: [{ext_min}, {ext_max}] km⁻¹")
+
+    valid_pos = ~np.isnan(y_raw)
+    n_below = ((y_raw < ext_min) & valid_pos).sum()
+    n_above = ((y_raw > ext_max) & valid_pos).sum()
+    y_raw = np.where(valid_pos, np.clip(y_raw, ext_min, ext_max), y_raw)
+    print(f"    低于下限 clip : {n_below} 个值 → {ext_min}")
+    print(f"    高于上限 clip : {n_above} 个值 → {ext_max}")
+
+    x_fill_mask = np.abs(X_raw) > 1e30
+    if x_fill_mask.any():
+        X_raw[x_fill_mask] = np.nan
+        print(f"    X_raw 填充值(>1e30) → NaN : {x_fill_mask.sum()} 个")
+
+    # ==============================================================
+    # Step C：NaN 填充
+    # ==============================================================
+    print(f"\n  ── Step C: NaN 填充 ──")
+
+    # C-1: X 特征
+    nan_in_X = np.isnan(X_raw).sum()
+    if nan_in_X > 0:
+        for col in range(X_raw.shape[1]):
+            mask = np.isnan(X_raw[:, col])
+            if mask.any():
+                fill = np.nanmean(X_raw[:, col])
+                fill = fill if not np.isnan(fill) else 0.0
+                X_raw[mask, col] = fill
+                print(f"    X col {col:2d}: 填充 {mask.sum():4d} 个 NaN → 均值 {fill:.4f}")
+    else:
+        print(f"    X_raw 无 NaN，跳过")
+
+    # C-2: y 廓线
+    nan_in_y = np.isnan(y_raw).sum()
+    n_col_mean = 0
+    n_col_interp = 0
+    allnan_cols = []
+
+    if nan_in_y > 0:
+        for col in range(y_raw.shape[1]):
+            mask = np.isnan(y_raw[:, col])
+            if not mask.any():
+                continue
+            col_mean = np.nanmean(y_raw[:, col])
+            if not np.isnan(col_mean):
+                y_raw[mask, col] = col_mean
+                n_col_mean += 1
+            else:
+                allnan_cols.append(col)
+
+        print(f"    y_raw 列均值填充 : {n_col_mean} 列")
+        print(f"    全列 NaN 待插值  : {len(allnan_cols)} 列")
+
+        if allnan_cols:
+            col_means_profile = np.nanmean(y_raw, axis=0)
+            all_col_idx = np.arange(y_raw.shape[1])
+            known_mask = ~np.isin(all_col_idx, allnan_cols)
+            known_idx = all_col_idx[known_mask]
+            known_vals = col_means_profile[known_mask]
+
+            if len(known_idx) >= 4:
+                cs = CubicSpline(known_idx, known_vals,
+                                 bc_type='not-a-knot',
+                                 extrapolate=True)
+                for col in allnan_cols:
+                    interp_val = float(np.clip(cs(col), ext_min, ext_max))
+                    y_raw[:, col] = interp_val
+                    n_col_interp += 1
+                print(f"    样条插值填充     : {n_col_interp} 列 ✓")
+            else:
+                global_mean = float(np.nanmean(col_means_profile))
+                global_mean = global_mean if not np.isnan(global_mean) else 0.0
+                for col in allnan_cols:
+                    y_raw[:, col] = global_mean
+                    n_col_interp += 1
+                print(f"    已知节点不足4个，退化为全局均值({global_mean:.4f})填充: "
+                      f"{n_col_interp} 列")
+    else:
+        print(f"    y_raw 无 NaN，跳过")
+
+    # ==============================================================
+    # Step D：断言确认无残余 NaN
+    # ==============================================================
+    assert not np.isnan(X_raw).any(), "X_raw 仍含 NaN！"
+    assert not np.isnan(y_raw).any(), "y_raw 仍含 NaN！"
+    print(f"\n  ── Step D: NaN 检查通过 ✓ ──")
+
+    # ==============================================================
+    # Step E：兜底行过滤
+    # ==============================================================
+    valid_mask = np.all((y_raw >= ext_min) & (y_raw <= ext_max), axis=1)
+    n_before = X_raw.shape[0]
+    X_raw = X_raw[valid_mask]
+    y_raw = y_raw[valid_mask]
+    print(f"\n  ── Step E: 兜底行过滤 ──")
+    print(f"    保留 {X_raw.shape[0]} / {n_before} 行 "
+          f"({valid_mask.mean()*100:.1f}%)")
+
+    if X_raw.shape[0] == 0:
+        raise ValueError("过滤后样本数为 0！请检查 ext_clip_min / ext_clip_max 设置。")
+
+    # ==============================================================
+    # Step F：Savitzky-Golay 平滑
+    # ==============================================================
+    sg_window = CONFIG['sg_window']
+    sg_order = CONFIG['sg_order']
+
+    print(f"\n  ── Step F: 逐行廓线平滑（Savitzky-Golay）──")
+    print(f"    window={sg_window}, polyorder={sg_order}, 共 {y_raw.shape[0]} 行")
+
+    for i in range(y_raw.shape[0]):
+        y_raw[i] = savgol_filter(y_raw[i], window_length=sg_window,
+                                 polyorder=sg_order).astype(np.float32)
+        y_raw[i] = np.clip(y_raw[i], ext_min, ext_max)
+
+    print(f"    平滑完成 ✓")
+    return X_raw, y_raw, ProfileAlti
+
+# ============================================================
+# 2. 特征工程
+# ============================================================
+def feature_engineering(X_raw: np.ndarray):
+    lon = np.radians(X_raw[:, 0])
+    lat = np.radians(X_raw[:, 1])
+    time = X_raw[:, 2]
+
+    t_sin = np.sin(2 * np.pi * time / 24.0)
+    t_cos = np.cos(2 * np.pi * time / 24.0)
+    sp_x = np.cos(lat) * np.cos(lon)
+    sp_y = np.cos(lat) * np.sin(lon)
+    sp_z = np.sin(lat)
+    meteo = X_raw[:, 3:]
+
+    X_eng = np.column_stack([
+        X_raw[:, 0], X_raw[:, 1],
+        t_sin, t_cos,
+        sp_x, sp_y, sp_z,
+        meteo
+    ]).astype(np.float32)
+
+    feat_names = ['Lon', 'Lat', 'T_sin', 'T_cos', 'Sp_X', 'Sp_Y', 'Sp_Z',
+                  'DewT_K', 'T_K', 'U_ms', 'V_ms', 'SP_Pa']
+    return X_eng, feat_names
+
+# ============================================================
+# 3. 模型类（动态输出层）
+# ============================================================
+class SpatioTemporalAttention(nn.Module):
+    def __init__(self, n_feat: int, d_model: int, n_heads: int,
+                 n_layers: int, dropout: float, n_output: int = 1291):
+        super().__init__()
+        self.d_model = d_model
+
+        self.time_embed = nn.Sequential(
+            nn.Linear(2, d_model), nn.LayerNorm(d_model), nn.GELU()
+        )
+        self.space_embed = nn.Sequential(
+            nn.Linear(3, d_model), nn.LayerNorm(d_model), nn.GELU()
+        )
+        self.meteo_embed = nn.Sequential(
+            nn.Linear(5, d_model), nn.LayerNorm(d_model), nn.GELU()
+        )
+
+        encoder_layer = nn.TransformerEncoderLayer(
+            d_model=d_model, nhead=n_heads,
+            dim_feedforward=d_model * 4, dropout=dropout,
+            activation='gelu', batch_first=True, norm_first=True
+        )
+        self.transformer = nn.TransformerEncoder(encoder_layer, num_layers=n_layers)
+        self.attn_pool = nn.Linear(d_model, 1)
+
+        self.decoder = nn.Sequential(
+            nn.Linear(d_model, 512), nn.LayerNorm(512), nn.GELU(), nn.Dropout(dropout),
+            nn.Linear(512, 1024), nn.LayerNorm(1024), nn.GELU(), nn.Dropout(dropout),
+            nn.Linear(1024, 512), nn.LayerNorm(512), nn.GELU(),
+            nn.Linear(512, n_output)
+        )
+        self._init_weights()
+
+    def _init_weights(self):
+        for m in self.modules():
+            if isinstance(m, nn.Linear):
+                nn.init.xavier_uniform_(m.weight)
+                if m.bias is not None:
+                    nn.init.zeros_(m.bias)
+
+    def forward(self, x):
+        time_feat = x[:, 2:4]
+        space_feat = x[:, 4:7]
+        meteo_feat = x[:, 7:]
+
+        t_tok = self.time_embed(time_feat).unsqueeze(1)
+        s_tok = self.space_embed(space_feat).unsqueeze(1)
+        m_tok = self.meteo_embed(meteo_feat).unsqueeze(1)
+
+        tokens = torch.cat([t_tok, s_tok, m_tok], dim=1)
+        encoded = self.transformer(tokens)
+
+        attn_w = torch.softmax(self.attn_pool(encoded), dim=1)
+        pooled = (attn_w * encoded).sum(dim=1)
+        out = self.decoder(pooled)
+        return out
+
+# ============================================================
+# 4. 主流程
+# ============================================================
+def main():
+    print("=" * 60)
+    print("  中低层 (0~10 km) 训练（使用原脚本数据清洗）")
+    print("=" * 60)
+
+    # 4.1 加载数据（完整清洗）
+    print("\n[1/4] Loading data with full cleaning...")
+    X_raw, y_raw, ProfileAlti = load_data(CONFIG['mat_file'])
+
+    # 4.2 特征工程
+    X_eng, feat_names = feature_engineering(X_raw)
+    print(f"  Feature shape: {X_eng.shape}, Target shape: {y_raw.shape}")
+
+    # 4.3 过滤高度：只保留 0~max_altitude_km
+    print(f"\n[2/4] Filtering altitudes (0~{CONFIG['max_altitude_km']} km)...")
+    alt_mask = (ProfileAlti >= 0) & (ProfileAlti <= CONFIG['max_altitude_km'])
+    y_raw = y_raw[:, alt_mask]
+    ProfileAlti = ProfileAlti[alt_mask]
+    n_alt_new = y_raw.shape[1]
+    print(f"  保留高度层数: {n_alt_new} (原始 1291)")
+    print(f"  高度范围: {ProfileAlti.min():.1f} ~ {ProfileAlti.max():.1f} km")
+
+    # 4.4 划分训练/测试集
+    n = X_eng.shape[0]
+    test_start = int(n * (1 - CONFIG['test_ratio']))
+    X_train, X_test = X_eng[:test_start], X_eng[test_start:]
+    y_train, y_test = y_raw[:test_start], y_raw[test_start:]
+    print(f"\n  训练样本: {X_train.shape[0]}, 测试样本: {X_test.shape[0]}")
+
+    # 4.5 构建残差目标 + 标准化
+    print("\n[3/4] Computing residual targets...")
+    mean_profile_train = y_train.mean(axis=0, keepdims=True)
+    y_train_residual = y_train - mean_profile_train
+    y_test_residual = y_test - mean_profile_train
+
+    scaler_y = StandardScaler()
+    y_train_scaled = scaler_y.fit_transform(y_train_residual)
+    y_test_scaled = scaler_y.transform(y_test_residual)
+    print(f"  残差标准化后: 均值≈{y_train_scaled.mean():.4f}, 标准差≈{y_train_scaled.std():.4f}")
+
+    # 4.6 特征标准化
+    print("\n[4/4] Feature normalization and training...")
+    scaler_x = StandardScaler()
+    X_train_scaled = scaler_x.fit_transform(X_train)
+    X_test_scaled = scaler_x.transform(X_test)
+
+    X_train_t = torch.FloatTensor(X_train_scaled)
+    y_train_t = torch.FloatTensor(y_train_scaled)
+    X_test_t = torch.FloatTensor(X_test_scaled)
+    y_test_t = torch.FloatTensor(y_test_scaled)
+
+    train_dataset = TensorDataset(X_train_t, y_train_t)
+    test_dataset = TensorDataset(X_test_t, y_test_t)
+    train_loader = DataLoader(train_dataset, batch_size=CONFIG['batch_size'], shuffle=True)
+    test_loader = DataLoader(test_dataset, batch_size=CONFIG['batch_size'], shuffle=False)
+
+    # 4.7 构建模型
+    model = SpatioTemporalAttention(
+        n_feat=X_eng.shape[1],
+        d_model=128,
+        n_heads=4,
+        n_layers=2,
+        dropout=CONFIG['dropout'],
+        n_output=n_alt_new
+    ).to(CONFIG['device'])
+    print(f"  模型输出层大小: {n_alt_new}")
+
+    optimizer = torch.optim.AdamW(model.parameters(), lr=CONFIG['lr'], weight_decay=CONFIG['weight_decay'])
+    criterion = nn.MSELoss()
+
+    best_test_loss = float('inf')
+    patience = 15
+    wait = 0
+    best_state = None
+
+    for epoch in range(1, CONFIG['epochs'] + 1):
+        model.train()
+        train_loss = 0.0
+        for xb, yb in train_loader:
+            xb, yb = xb.to(CONFIG['device']), yb.to(CONFIG['device'])
+            optimizer.zero_grad()
+            pred = model(xb)
+            loss = criterion(pred, yb)
+            loss.backward()
+            torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
+            optimizer.step()
+            train_loss += loss.item() * xb.size(0)
+        train_loss /= len(train_loader.dataset)
+
+        model.eval()
+        test_loss = 0.0
+        with torch.no_grad():
+            for xb, yb in test_loader:
+                xb, yb = xb.to(CONFIG['device']), yb.to(CONFIG['device'])
+                pred = model(xb)
+                loss = criterion(pred, yb)
+                test_loss += loss.item() * xb.size(0)
+        test_loss /= len(test_loader.dataset)
+
+        if test_loss < best_test_loss:
+            best_test_loss = test_loss
+            best_state = {k: v.cpu().clone() for k, v in model.state_dict().items()}
+            wait = 0
+        else:
+            wait += 1
+            if wait >= patience:
+                print(f"Early stopping at epoch {epoch}")
+                break
+
+        if epoch % 10 == 0:
+            print(f"Epoch {epoch:3d}: Train Loss = {train_loss:.6f}, Test Loss = {test_loss:.6f}")
+
+    model.load_state_dict(best_state)
+    print(f"Best test loss: {best_test_loss:.6f}")
+
+    # 4.8 评估
+    print("\n[5/5] Evaluating on test set...")
+    model.eval()
+    preds_scaled = []
+    with torch.no_grad():
+        for xb, _ in test_loader:
+            xb = xb.to(CONFIG['device'])
+            pred = model(xb).cpu().numpy()
+            preds_scaled.append(pred)
+    preds_scaled = np.vstack(preds_scaled)
+
+    pred_residual = scaler_y.inverse_transform(preds_scaled)
+    pred_actual = pred_residual + mean_profile_train
+    pred_actual = np.clip(pred_actual, CONFIG['ext_clip_min'], CONFIG['ext_clip_max'])
+    true_actual = y_test
+
+    # 逐高度指标
+    n_alt = true_actual.shape[1]
+    r2_per_alt = np.full(n_alt, np.nan)
+    rmse_per_alt = np.full(n_alt, np.nan)
+    mae_per_alt = np.full(n_alt, np.nan)
+
+    valid_count = 0
+    for k in range(n_alt):
+        y_true = true_actual[:, k]
+        y_pred = pred_actual[:, k]
+        if y_true.std() < CONFIG['VALID_STD_THRESHOLD']:
+            continue
+        r2_per_alt[k] = r2_score(y_true, y_pred)
+        rmse_per_alt[k] = np.sqrt(mean_squared_error(y_true, y_pred))
+        mae_per_alt[k] = mean_absolute_error(y_true, y_pred)
+        valid_count += 1
+
+    print(f"\n有效高度层数: {valid_count} / {n_alt}")
+
+    # 全局统计
+    r2_global = r2_score(true_actual.ravel(), pred_actual.ravel())
+    rmse_global = np.sqrt(mean_squared_error(true_actual.ravel(), pred_actual.ravel()))
+    mae_global = mean_absolute_error(true_actual.ravel(), pred_actual.ravel())
+
+    print("\n" + "=" * 60)
+    print(f"  中低层 (0~{CONFIG['max_altitude_km']} km) 测试集性能")
+    print("=" * 60)
+    print(f"Global R²  : {r2_global:.4f}")
+    print(f"Global RMSE: {rmse_global:.6f} km⁻¹")
+    print(f"Global MAE : {mae_global:.6f} km⁻¹")
+    print("\n--- 逐高度统计 (有效层) ---")
+    print(f"R²  : mean={np.nanmean(r2_per_alt):.4f}, std={np.nanstd(r2_per_alt):.4f}")
+    print(f"RMSE: mean={np.nanmean(rmse_per_alt):.6f}, std={np.nanstd(rmse_per_alt):.6f}")
+    print(f"MAE : mean={np.nanmean(mae_per_alt):.6f}, std={np.nanstd(mae_per_alt):.6f}")
+
+    # 子区间统计
+    sub_ranges = [(0, 3, "0-3 km"), (3, 6, "3-6 km"), (6, 10, "6-10 km")]
+    print("\n--- 子区间统计 ---")
+    for low, high, label in sub_ranges:
+        idx = (ProfileAlti >= low) & (ProfileAlti < high) & ~np.isnan(r2_per_alt)
+        if idx.sum() == 0:
+            print(f"  {label}: 无有效层")
+            continue
+        print(f"  {label}:")
+        print(f"    有效层数: {idx.sum()}")
+        print(f"    R²  mean = {np.nanmean(r2_per_alt[idx]):.4f} ± {np.nanstd(r2_per_alt[idx]):.4f}")
+        print(f"    RMSE mean = {np.nanmean(rmse_per_alt[idx]):.6f} ± {np.nanstd(rmse_per_alt[idx]):.6f}")
+        print(f"    MAE  mean = {np.nanmean(mae_per_alt[idx]):.6f} ± {np.nanstd(mae_per_alt[idx]):.6f}")
+
+    # 可视化
+    fig, axes = plt.subplots(1, 3, figsize=(15, 5))
+    axes[0].plot(r2_per_alt, ProfileAlti, 'b-', lw=1.5)
+    axes[0].axvline(0, color='gray', linestyle='--', lw=0.8)
+    axes[0].set_xlabel('R²')
+    axes[0].set_ylabel('Altitude (km)')
+    axes[0].set_title(f'R² per altitude (0~{CONFIG["max_altitude_km"]} km)')
+    axes[0].grid(alpha=0.3)
+    axes[0].set_xlim([-1, 1])
+
+    axes[1].plot(rmse_per_alt, ProfileAlti, 'r-', lw=1.5)
+    axes[1].set_xlabel('RMSE (km⁻¹)')
+    axes[1].set_ylabel('Altitude (km)')
+    axes[1].set_title(f'RMSE per altitude (0~{CONFIG["max_altitude_km"]} km)')
+    axes[1].grid(alpha=0.3)
+
+    axes[2].plot(mae_per_alt, ProfileAlti, 'g-', lw=1.5)
+    axes[2].set_xlabel('MAE (km⁻¹)')
+    axes[2].set_ylabel('Altitude (km)')
+    axes[2].set_title(f'MAE per altitude (0~{CONFIG["max_altitude_km"]} km)')
+    axes[2].grid(alpha=0.3)
+
+    plt.tight_layout()
+    plt.savefig('train_midlow_original_results.png', dpi=300, bbox_inches='tight')
+    print("\n✅ 图表已保存: train_midlow_original_results.png")
+    plt.show()
+
+    print("\n" + "=" * 60)
+    print("  训练与评估完成！")
+    print("=" * 60)
+
+
+if __name__ == '__main__':
+    main()
