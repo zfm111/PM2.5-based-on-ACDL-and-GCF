@@ -3,7 +3,8 @@ train_midlow_original.py
 基于原脚本数据清洗逻辑，只使用中低层（0~10 km）进行训练
 - 完整复用 load_data 函数（含 SG 平滑、样条插值等）
 - 动态调整模型输出层大小
-- 输出逐高度精度指标
+- 新增：露点温度差（DPD）作为第 13 个特征
+- 新增：剔除无效填充值（≈50.0）
 """
 
 import os
@@ -22,7 +23,7 @@ import warnings
 warnings.filterwarnings('ignore')
 
 # ============================================================
-# 0. 配置（请修改为您的实际路径）
+# 0. 配置
 # ============================================================
 CONFIG = {
     'mat_file': r'C:/Users/admin/Desktop/Main_ACDL_ERA5_SpatiotemporalAttention_DL/ACDL_ERA5_Matched_20220601.mat',
@@ -36,7 +37,7 @@ CONFIG = {
     'test_ratio': 0.2,
     'max_altitude_km': 10.0,
     'ext_clip_min': -0.01,
-    'ext_clip_max': 50.0,
+    'ext_clip_max': 10.0,
     'sg_window': 11,
     'sg_order': 2,
     'VALID_STD_THRESHOLD': 1e-4,
@@ -47,7 +48,7 @@ np.random.seed(CONFIG['seed'])
 print(f"Device: {CONFIG['device']}")
 
 # ============================================================
-# 1. 完整的数据加载函数（直接从原脚本复制，包含所有清洗步骤）
+# 1. 完整的数据加载函数（从原脚本复制，增加异常值清洗）
 # ============================================================
 def load_data(mat_file: str):
     """完整复制原脚本的 load_data 函数（包含所有数据清洗）"""
@@ -215,42 +216,74 @@ def load_data(mat_file: str):
         y_raw[i] = np.clip(y_raw[i], ext_min, ext_max)
 
     print(f"    平滑完成 ✓")
+    
+    # ==============================================================
+    # Step G：额外清洗——剔除无效填充值（≈50.0）
+    # ==============================================================
+    print(f"\n  ── Step G: 额外清洗——剔除无效填充值（≈50.0）──")
+    anomaly_mask = (y_raw >= 49.9) & (y_raw <= 50.1)
+    n_anomaly = anomaly_mask.sum()
+    if n_anomaly > 0:
+        print(f"    发现 {n_anomaly} 个异常填充值（≈50.0），将用该列有效均值替换")
+        for col in range(y_raw.shape[1]):
+            col_data = y_raw[:, col]
+            mask_col = (col_data >= 49.9) & (col_data <= 50.1)
+            if mask_col.any():
+                valid_vals = col_data[~mask_col]
+                col_mean = valid_vals.mean() if len(valid_vals) > 0 else 0.0
+                col_data[mask_col] = col_mean
+        print("    替换完成")
+    else:
+        print("    未发现异常填充值")
+
     return X_raw, y_raw, ProfileAlti
 
 # ============================================================
-# 2. 特征工程
+# 2. 自定义特征工程（适配 9 列输入，包含 DPD）
 # ============================================================
-def feature_engineering(X_raw: np.ndarray):
+def feature_engineering_custom(X_raw: np.ndarray):
+    """
+    输入列顺序：[Lon, Lat, Time, DewT, T, U, V, SP, DPD]
+    输出 13 个特征：Lon, Lat, T_sin, T_cos, Sp_X, Sp_Y, Sp_Z,
+                   DewT, T, U, V, SP, DPD
+    """
     lon = np.radians(X_raw[:, 0])
     lat = np.radians(X_raw[:, 1])
     time = X_raw[:, 2]
 
     t_sin = np.sin(2 * np.pi * time / 24.0)
     t_cos = np.cos(2 * np.pi * time / 24.0)
+
     sp_x = np.cos(lat) * np.cos(lon)
     sp_y = np.cos(lat) * np.sin(lon)
     sp_z = np.sin(lat)
+
+    # 气象特征：DewT, T, U, V, SP, DPD（共 6 列）
     meteo = X_raw[:, 3:]
 
     X_eng = np.column_stack([
-        X_raw[:, 0], X_raw[:, 1],
+        X_raw[:, 0], X_raw[:, 1],   # Lon, Lat
         t_sin, t_cos,
         sp_x, sp_y, sp_z,
         meteo
     ]).astype(np.float32)
 
     feat_names = ['Lon', 'Lat', 'T_sin', 'T_cos', 'Sp_X', 'Sp_Y', 'Sp_Z',
-                  'DewT_K', 'T_K', 'U_ms', 'V_ms', 'SP_Pa']
+                  'DewT_K', 'T_K', 'U_ms', 'V_ms', 'SP_Pa', 'DPD_K']
     return X_eng, feat_names
 
 # ============================================================
-# 3. 模型类（动态输出层）
+# 3. 自定义模型类（适配动态气象特征维度）
 # ============================================================
-class SpatioTemporalAttention(nn.Module):
+class SpatioTemporalAttention_custom(nn.Module):
     def __init__(self, n_feat: int, d_model: int, n_heads: int,
                  n_layers: int, dropout: float, n_output: int = 1291):
         super().__init__()
         self.d_model = d_model
+        
+        # 前 7 列：Lon, Lat, T_sin, T_cos, Sp_X, Sp_Y, Sp_Z
+        # 后 6 列：DewT, T, U, V, SP, DPD
+        self.n_meteo = n_feat - 7   # 自动计算气象特征维度
 
         self.time_embed = nn.Sequential(
             nn.Linear(2, d_model), nn.LayerNorm(d_model), nn.GELU()
@@ -259,7 +292,7 @@ class SpatioTemporalAttention(nn.Module):
             nn.Linear(3, d_model), nn.LayerNorm(d_model), nn.GELU()
         )
         self.meteo_embed = nn.Sequential(
-            nn.Linear(5, d_model), nn.LayerNorm(d_model), nn.GELU()
+            nn.Linear(self.n_meteo, d_model), nn.LayerNorm(d_model), nn.GELU()
         )
 
         encoder_layer = nn.TransformerEncoderLayer(
@@ -297,7 +330,7 @@ class SpatioTemporalAttention(nn.Module):
         tokens = torch.cat([t_tok, s_tok, m_tok], dim=1)
         encoded = self.transformer(tokens)
 
-        attn_w = torch.softmax(self.attn_pool(encoded), dim=1)
+        attn_w = F.softmax(self.attn_pool(encoded), dim=1)
         pooled = (attn_w * encoded).sum(dim=1)
         out = self.decoder(pooled)
         return out
@@ -307,19 +340,26 @@ class SpatioTemporalAttention(nn.Module):
 # ============================================================
 def main():
     print("=" * 60)
-    print("  中低层 (0~10 km) 训练（使用原脚本数据清洗）")
+    print("  中低层 (0~10 km) 训练（含 DPD 特征 + 异常值清洗）")
     print("=" * 60)
 
-    # 4.1 加载数据（完整清洗）
-    print("\n[1/4] Loading data with full cleaning...")
+    # 4.1 加载数据（完整清洗 + DPD）
+    print("\n[1/5] Loading data with full cleaning...")
     X_raw, y_raw, ProfileAlti = load_data(CONFIG['mat_file'])
 
-    # 4.2 特征工程
-    X_eng, feat_names = feature_engineering(X_raw)
+    # ========== 新增特征：露点温度差 DPD ==========
+    print("\n[2/5] Adding DPD feature...")
+    DPD = X_raw[:, 4] - X_raw[:, 3]   # T_K - DewT_K
+    DPD = DPD.reshape(-1, 1)
+    X_raw = np.column_stack([X_raw, DPD])
+    print(f"  X_raw 形状变为: {X_raw.shape} (新增1列 DPD)")
+
+    # 使用自定义特征工程（13 个特征）
+    X_eng, feat_names = feature_engineering_custom(X_raw)
     print(f"  Feature shape: {X_eng.shape}, Target shape: {y_raw.shape}")
 
-    # 4.3 过滤高度：只保留 0~max_altitude_km
-    print(f"\n[2/4] Filtering altitudes (0~{CONFIG['max_altitude_km']} km)...")
+    # 4.2 过滤高度：只保留 0~max_altitude_km
+    print(f"\n[3/5] Filtering altitudes (0~{CONFIG['max_altitude_km']} km)...")
     alt_mask = (ProfileAlti >= 0) & (ProfileAlti <= CONFIG['max_altitude_km'])
     y_raw = y_raw[:, alt_mask]
     ProfileAlti = ProfileAlti[alt_mask]
@@ -327,15 +367,15 @@ def main():
     print(f"  保留高度层数: {n_alt_new} (原始 1291)")
     print(f"  高度范围: {ProfileAlti.min():.1f} ~ {ProfileAlti.max():.1f} km")
 
-    # 4.4 划分训练/测试集
+    # 4.3 划分训练/测试集
     n = X_eng.shape[0]
     test_start = int(n * (1 - CONFIG['test_ratio']))
     X_train, X_test = X_eng[:test_start], X_eng[test_start:]
     y_train, y_test = y_raw[:test_start], y_raw[test_start:]
     print(f"\n  训练样本: {X_train.shape[0]}, 测试样本: {X_test.shape[0]}")
 
-    # 4.5 构建残差目标 + 标准化
-    print("\n[3/4] Computing residual targets...")
+    # 4.4 构建残差目标 + 标准化
+    print("\n[4/5] Computing residual targets...")
     mean_profile_train = y_train.mean(axis=0, keepdims=True)
     y_train_residual = y_train - mean_profile_train
     y_test_residual = y_test - mean_profile_train
@@ -345,8 +385,8 @@ def main():
     y_test_scaled = scaler_y.transform(y_test_residual)
     print(f"  残差标准化后: 均值≈{y_train_scaled.mean():.4f}, 标准差≈{y_train_scaled.std():.4f}")
 
-    # 4.6 特征标准化
-    print("\n[4/4] Feature normalization and training...")
+    # 4.5 特征标准化
+    print("\n[5/5] Feature normalization and training...")
     scaler_x = StandardScaler()
     X_train_scaled = scaler_x.fit_transform(X_train)
     X_test_scaled = scaler_x.transform(X_test)
@@ -361,9 +401,9 @@ def main():
     train_loader = DataLoader(train_dataset, batch_size=CONFIG['batch_size'], shuffle=True)
     test_loader = DataLoader(test_dataset, batch_size=CONFIG['batch_size'], shuffle=False)
 
-    # 4.7 构建模型
-    model = SpatioTemporalAttention(
-        n_feat=X_eng.shape[1],
+    # 4.6 构建模型（使用自定义模型，适配 13 个特征）
+    model = SpatioTemporalAttention_custom(
+        n_feat=X_eng.shape[1],   # 13
         d_model=128,
         n_heads=4,
         n_layers=2,
@@ -371,9 +411,10 @@ def main():
         n_output=n_alt_new
     ).to(CONFIG['device'])
     print(f"  模型输出层大小: {n_alt_new}")
+    print(f"  气象特征维度: {model.n_meteo}")
 
     optimizer = torch.optim.AdamW(model.parameters(), lr=CONFIG['lr'], weight_decay=CONFIG['weight_decay'])
-    criterion = nn.MSELoss()
+    criterion = nn.HuberLoss(delta=1.0)
 
     best_test_loss = float('inf')
     patience = 15
@@ -420,8 +461,8 @@ def main():
     model.load_state_dict(best_state)
     print(f"Best test loss: {best_test_loss:.6f}")
 
-    # 4.8 评估
-    print("\n[5/5] Evaluating on test set...")
+    # 4.7 评估
+    print("\n[6/6] Evaluating on test set...")
     model.eval()
     preds_scaled = []
     with torch.no_grad():
@@ -461,7 +502,7 @@ def main():
     mae_global = mean_absolute_error(true_actual.ravel(), pred_actual.ravel())
 
     print("\n" + "=" * 60)
-    print(f"  中低层 (0~{CONFIG['max_altitude_km']} km) 测试集性能")
+    print(f"  中低层 (0~{CONFIG['max_altitude_km']} km) 测试集性能（含 DPD）")
     print("=" * 60)
     print(f"Global R²  : {r2_global:.4f}")
     print(f"Global RMSE: {rmse_global:.6f} km⁻¹")
