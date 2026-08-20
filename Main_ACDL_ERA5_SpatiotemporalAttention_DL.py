@@ -37,7 +37,7 @@ from sklearn.metrics import r2_score, mean_squared_error, mean_absolute_error
 # 0. 全局配置
 # ============================================================
 CFG = {
-    'mat_file'      : r'I:\Data\MatchResult\ACDL_ERA5_Matched_20220601.mat',
+    'mat_file'      : r'C:/Users/admin/Desktop/Main_ACDL_ERA5_SpatiotemporalAttention_DL/ACDL_ERA5_Matched_20220601.mat',
     'device'        : 'cuda' if torch.cuda.is_available() else 'cpu',
     'seed'          : 42,
     'batch_size'    : 256,
