@@ -16,3 +16,4 @@ _smoketest/
 *.mat
 
 # 训练输出中的大文件由具体目录决定,npz 预测结果(<5MB)保留用于评估台复算
+_smoketest_agl/
