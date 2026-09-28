@@ -173,8 +173,8 @@ def main() -> int:
     ax.set_xlabel(r"ACDL 观测 $\sigma$ (km$^{-1}$)")
     ax.set_title("(d) 全层逐样本密度散点(N="
                  + f"{o_all.size:,} 对)", fontsize=11)
-    _box(ax, f"Gfrac(EE) = {ee*100:.1f}%\n|rel| MAE = {rel*100:.1f}%\n"
-             f"(逐样本散度:均值图不可见的部分)")
+    _box(ax, f"逐层 EE 内 = {ee*100:.1f}%(参考)\n逐层 MAE = {mae_lay:.4f} km$^{{-1}}$\n"
+             f"列级 Gfrac = 57.0%(bench 口径)\n—— 均值图不可见的逐样本散度")
     ax.grid(True); ax.legend(loc="lower right", fontsize=8.5)
 
     # ---- (e) 分地形带平均偏差剖面 ----
