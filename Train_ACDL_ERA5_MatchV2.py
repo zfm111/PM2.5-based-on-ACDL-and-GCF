@@ -109,6 +109,20 @@ CONFIG = {
     #   abs  = 逐层绝对消光 σ_l(km⁻¹),重建廓线本身
     #   frac = 厚度加权逐层占比 f_l = σ_lΔz_l/Σ(σΔz),和为 1,只学"形状"
     "TARGET": "abs",
+
+    # ---- 优化路线 Step 2/3 开关(《优化路线讨论.md》§2.5/§3)----
+    # 损失高度权重:loss = Σ w_l·mask_l·Huber / Σ w_l·mask_l —— 三种是同一段代码,只换 w_l
+    #   none    = 全层等权(基线 B0)
+    #   decay   = w_l = exp(-层底高度/τ),低层加权(τ=W_DECAY_TAU_KM)
+    #   hard5km = 层底 < HARD_TOP_KM 的层 w=1,其余 0(训练重点截断,输出仍 32 层)
+    "W_PROFILE": "none",
+    "W_DECAY_TAU_KM": 3.0,
+    "HARD_TOP_KM": 5.0,
+    # 目标取 log(E2b):y→ln(clip(y,LOG_EPS)) 后再逐层标准化;指标仍在原空间评估
+    "LOG_TARGET": False,
+    "LOG_EPS": 1e-6,
+    # 输出非负(E2c):解码器输出过 softplus;输出恒 ≥0 → 目标 z-score 关闭,原空间回归
+    "SOFTPLUS": False,
     "REQ_MIN_LAYERS": 10,     # 形状目标(frac):样本至少要有多少有效层
     "REQ_COV": 0.5,           # 形状目标:有效厚度至少占整柱的比例
     "SURF_M": 0.0,            # 估算 L00 厚度用的地表高度(m;匹配结果未存 surf_h)
@@ -349,10 +363,12 @@ class SpatioTemporalAttention32(nn.Module):
     """时间(2) / 空间(3) / 气象廓线(3×32=96) 三 token → Transformer → 注意力池化 → MLP → 32 层。"""
 
     def __init__(self, n_level: int = 32, d_model: int = 128, n_heads: int = 4,
-                 n_layers: int = 2, dropout: float = 0.15, n_extra: int = 0):
+                 n_layers: int = 2, dropout: float = 0.15, n_extra: int = 0,
+                 softplus: bool = False):
         super().__init__()
         self.n_level = n_level
         self.n_extra = int(n_extra)      # >0: 额外标量列(BLH/TCWV/...)单独作为一个 token
+        self.softplus = bool(softplus)   # 非负输出(E2c):σ̂ 恒 ≥0;配合"关闭目标 z-score"使用
         n_meteo = 3 * n_level
         self.time_embed = nn.Sequential(nn.Linear(2, d_model), nn.LayerNorm(d_model), nn.GELU())
         self.space_embed = nn.Sequential(nn.Linear(3, d_model), nn.LayerNorm(d_model), nn.GELU())
@@ -392,7 +408,8 @@ class SpatioTemporalAttention32(nn.Module):
         enc = self.transformer(tokens)
         w = F.softmax(self.attn_pool(enc), dim=1)   # 注意力池化(含额外 token)
         pooled = (w * enc).sum(dim=1)
-        return self.decoder(pooled)                      # [B, 32] 占比 f_l 或绝对消光 σ_l
+        out = self.decoder(pooled)                       # [B, 32] 占比 f_l 或绝对消光 σ_l
+        return F.softplus(out) if self.softplus else out
 
 
 # ============================================================
@@ -407,13 +424,48 @@ def fit_target_scaler(y_tr: np.ndarray):
     return mu.astype(np.float32), sd.astype(np.float32)
 
 
-def masked_huber(pred, target_z, mask, delta: float):
-    """只对 mask=1 的层计 Huber;若整批无有效层 → 返回 0(不产生梯度)。"""
+def masked_huber(pred, target_z, mask, delta: float, w=None):
+    """只对 mask=1 的层计 Huber;若整批无有效层 → 返回 0(不产生梯度)。
+
+    w: 可选逐层高度权重 (32,) — loss = Σ w·mask·Huber / Σ w·mask(《优化路线讨论.md》§2.5)。
+       w=None → 全层等权(基线);w 含 0 层(硬截断)时该层零贡献,输出仍 32 层。
+    """
     loss = F.huber_loss(pred, target_z, reduction="none", delta=delta)
+    if w is not None:
+        mask = mask * w                              # (…,32) 逐层权重广播
     m = mask.sum()
     if float(m) <= 0:
         return loss.sum() * 0.0
     return (loss * mask).sum() / m
+
+
+def build_w_profile(cfg: dict):
+    """由层底高度构造逐层权重 w_l(32,)或 None(none=等权)。
+
+    层底高度:bot_0 = 0(近似地表),bot_k = 层顶 k-1;层顶取训练样本 H 列的有限均值。
+    """
+    kind = (cfg.get("W_PROFILE") or "none").lower()
+    if kind == "none":
+        return None
+    h_top = np.asarray(cfg.get("LAYER_TOP_KM") or [], dtype=np.float64)
+    if h_top.size != cfg["N_LEVEL"]:
+        print(f"[WARN] W_PROFILE={kind}: 层高不可用({h_top.size} 层) → 回退等权")
+        return None
+    bot = np.empty_like(h_top)
+    bot[0] = 0.0
+    bot[1:] = h_top[:-1]
+    if kind == "decay":
+        tau = float(cfg.get("W_DECAY_TAU_KM", 3.0))
+        w = np.exp(-np.maximum(bot, 0.0) / tau)
+    elif kind.startswith("hard"):
+        top_km = float(cfg.get("HARD_TOP_KM", 5.0))
+        w = (bot < top_km).astype(np.float64)
+        n_in = int((w > 0).sum())
+        print(f"[W] 硬截断:层底 < {top_km:.0f} km 的 {n_in}/{cfg['N_LEVEL']} 层 w=1,其余 0"
+              f"(仅训练加权,输出/评估仍 32 层)")
+    else:
+        raise ValueError(f"未知 W_PROFILE: {kind}")
+    return w.astype(np.float32)
 
 
 def reconstruct_abs(pred, od_true, dz_km, mode):
@@ -481,20 +533,36 @@ def run_fold(X, T: dict, tr_idx, te_idx, fold_name: str, cfg: dict, verbose: boo
 
     # --- 形状 / 绝对目标 ---
     Y = T["y_frac"] if mode == "frac" else T["y_abs"]
+    log_t = bool(cfg.get("LOG_TARGET")) and mode == "abs"   # log 只对 abs 目标(frac 本身在 (0,1))
+    soft = bool(cfg.get("SOFTPLUS"))
+    if log_t:
+        with np.errstate(invalid="ignore"):
+            Y = np.log(np.clip(Y, float(cfg.get("LOG_EPS", 1e-6)), None))
+        print(f"[TARGET] log 空间训练: y→ln(clip(y,{cfg.get('LOG_EPS', 1e-6)})),评估仍还原原空间")
     if mode == "abs":
         mtr = np.isfinite(Y[tr_idx]); mte = np.isfinite(Y[te_idx])
     else:                      # 形状:仅用"满足完整性"的样本,且逐层掩膜
         mtr = np.isfinite(Y[tr_idx]) & T["ok_frac"][tr_idx][:, None]
         mte = np.isfinite(Y[te_idx]) & T["ok_frac"][te_idx][:, None]
     # 逐层标准化统计量(形状模式:仅统计掩膜内的有效值)
-    mu, sd = fit_target_scaler(np.where(mtr, Y[tr_idx], np.nan) if mode != "abs" else Y[tr_idx])
+    # softplus(E2c):输出恒 ≥0 → 不能拟合可为负的 z-score → 关闭标准化,原空间回归
+    if soft:
+        mu = np.zeros(cfg["N_LEVEL"], dtype=np.float32); sd = np.ones(cfg["N_LEVEL"], dtype=np.float32)
+    else:
+        mu, sd = fit_target_scaler(np.where(mtr, Y[tr_idx], np.nan) if mode != "abs" else Y[tr_idx])
     Ytr_z = np.where(mtr, (Y[tr_idx] - mu) / sd, 0.0).astype(np.float32)
     Yte_z = np.where(mte, (Y[te_idx] - mu) / sd, 0.0).astype(np.float32)
+
+    w_np = build_w_profile(cfg)
+    w_t = torch.from_numpy(w_np).to(dev) if w_np is not None else None
+    if w_np is not None and (cfg.get("W_PROFILE") or "").startswith("decay"):
+        print(f"[W] 低层加权 decay: w=exp(-层底/τ), τ={cfg.get('W_DECAY_TAU_KM', 3.0)} km;"
+              f" w(L00)={w_np[0]:.2f} w(≈5km)={w_np[min(17, cfg['N_LEVEL']-1)]:.2f} w(≈10km)={w_np[min(23, cfg['N_LEVEL']-1)]:.2f}")
 
     model = SpatioTemporalAttention32(
         n_level=cfg["N_LEVEL"], d_model=cfg["D_MODEL"], n_heads=cfg["N_HEADS"],
         n_layers=cfg["N_LAYERS"], dropout=cfg["DROPOUT"],
-        n_extra=cfg.get("N_EXTRA", 0)).to(dev)
+        n_extra=cfg.get("N_EXTRA", 0), softplus=soft).to(dev)
     opt = torch.optim.AdamW(model.parameters(), lr=cfg["LR"], weight_decay=cfg["WEIGHT_DECAY"])
     sched = torch.optim.lr_scheduler.CosineAnnealingLR(opt, T_max=cfg["EPOCHS"])
 
@@ -513,7 +581,7 @@ def run_fold(X, T: dict, tr_idx, te_idx, fold_name: str, cfg: dict, verbose: boo
         for i in range(0, n, cfg["BATCH"]):
             idx = perm[i:i + cfg["BATCH"]]
             opt.zero_grad()
-            loss = masked_huber(model(Xtr_t[idx]), Ytr_t[idx], Mtr_t[idx], cfg["HUBER_DELTA"])
+            loss = masked_huber(model(Xtr_t[idx]), Ytr_t[idx], Mtr_t[idx], cfg["HUBER_DELTA"], w=w_t)
             loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), cfg["GRAD_CLIP"])
             opt.step()
@@ -521,7 +589,7 @@ def run_fold(X, T: dict, tr_idx, te_idx, fold_name: str, cfg: dict, verbose: boo
         sched.step()
         model.eval()
         with torch.no_grad():
-            vloss = float(masked_huber(model(Xte_t), Yte_t, Mte_t, cfg["HUBER_DELTA"]))
+            vloss = float(masked_huber(model(Xte_t), Yte_t, Mte_t, cfg["HUBER_DELTA"], w=w_t))
         if vloss < best["loss"] - 1e-6:
             best = {"loss": vloss, "state": {k: v.detach().clone() for k, v in model.state_dict().items()},
                     "epoch": ep}
@@ -539,7 +607,13 @@ def run_fold(X, T: dict, tr_idx, te_idx, fold_name: str, cfg: dict, verbose: boo
     model.eval()
     with torch.no_grad():
         pred_z = model(Xte_t).cpu().numpy()
-    pred = pred_z * sd + mu                                   # 目标单位:占比 f_l 或 km⁻¹
+    if soft:                                                  # softplus:输出已是原空间 σ̂ ≥ 0
+        pred = pred_z
+    else:
+        pred = pred_z * sd + mu                               # 目标单位:占比 f_l 或 km⁻¹ / ln(km⁻¹)
+        if log_t:                                             # log 目标:还原回 σ̂(km⁻¹)
+            with np.errstate(over="ignore", invalid="ignore"):
+                pred = np.exp(np.clip(pred, None, 20.0))      # clip 防溢出(exp(20)≈4.9e8)
     dz_te = T["dz_km"][te_idx]
 
     # --- 还原成绝对消光廓线 → 这是唯一对外报告的逐层指标 ---
@@ -550,6 +624,10 @@ def run_fold(X, T: dict, tr_idx, te_idx, fold_name: str, cfg: dict, verbose: boo
                 "target": mode, "METRIC": "abs_extinction (km^-1)",
                 "recon": ("obs_od" if mode == "frac" else "identity")})
     met["TARGET_KIND"] = "frac" if mode == "frac" else "abs"
+    # 实验配置来源(Step 2/3 消融需要逐项追溯)
+    met["log_target"] = bool(log_t)
+    met["softplus"] = bool(soft)
+    met["w_profile"] = cfg.get("W_PROFILE", "none")
 
     # --- GCF:直接由预测廓线算(比值,柱含量的量纲自动抵消)---
     #   真值端筛选:`T["gcf"]` 只在"近地面窗口各层全有效"时才存在(缺测不能当 0)。
@@ -585,6 +663,10 @@ def run_fold(X, T: dict, tr_idx, te_idx, fold_name: str, cfg: dict, verbose: boo
     met["_lon"] = np.asarray(X[te_idx, cfg["COL_LON"]], dtype=np.float64)
     met["_lat"] = np.asarray(X[te_idx, cfg["COL_LAT"]], dtype=np.float64)
     met["_time"] = np.asarray(X[te_idx, cfg["COL_TIME"]], dtype=np.float64)
+    # 层厚/近地面掩膜/柱有效标记 → 评估台统一算 OD 相对误差 + Gfrac(EE) 用
+    met["_dz"] = np.asarray(dz_te, dtype=np.float32)
+    met["_low"] = np.asarray(low, dtype=bool)
+    met["_ok_od"] = np.asarray(T["ok_od"][te_idx], dtype=bool)
 
     # --- 柱含量(仅存档,不打印)---
     #   abs 模式:由预测廓线积分得到;frac 模式没有含量信息 → 不报
@@ -698,6 +780,7 @@ def save_predictions(results: list[dict], tag: str, out_dir: Path, geom=None) ->
         "gcf_true": cat("_gcf_true"), "gcf_pred": cat("_gcf_pred"),
         "gcf_true_out": cat("_gcf_true_out"), "gcf_pred_out": cat("_gcf_pred_out"),
         "y_true": cat("_y_true"), "y_pred": cat("_y_pred"),
+        "dz_km": cat("_dz"), "ok_od": cat("_ok_od"),
         "lon": cat("_lon"), "lat": cat("_lat"), "time": cat("_time"),
         "h_km": (np.asarray(geom[0], dtype=np.float32) if geom and geom[0] is not None else np.array([])),
         "p_hpa": (np.asarray(geom[1], dtype=np.float32) if geom and geom[1] is not None else np.array([])),
@@ -838,6 +921,13 @@ def run(args) -> int:
     if getattr(args, "gcf_top_m", None) is not None: cfg["GCF_TOP_M"] = args.gcf_top_m
     if getattr(args, "drop_l00", False): cfg["DROP_L00"] = True
     if getattr(args, "req_gcf_layers", False): cfg["REQ_GCF_LAYERS"] = True
+    # ---- 优化路线 Step 2/3 开关 ----
+    cfg["W_PROFILE"] = getattr(args, "w_profile", None) or cfg.get("W_PROFILE", "none")
+    cfg["LOG_TARGET"] = bool(getattr(args, "log_target", False))
+    cfg["SOFTPLUS"] = bool(getattr(args, "softplus", False))
+    if getattr(args, "w_decay_tau", None): cfg["W_DECAY_TAU_KM"] = args.w_decay_tau
+    if getattr(args, "hard_top_km", None): cfg["HARD_TOP_KM"] = args.hard_top_km
+    exp_tag = getattr(args, "tag", None)     # 实验后缀:输出文件名 → *_Holdout_<tag>.*
     out_dir = Path(cfg["OUT_DIR"]); out_dir.mkdir(parents=True, exist_ok=True)
 
     print("=" * 78)
@@ -846,6 +936,8 @@ def run(args) -> int:
     print(f"  输出目录: {out_dir}")
     print(f"  设备: {cfg['DEVICE']}  epochs={cfg['EPOCHS']} batch={cfg['BATCH']} "
           f"lr={cfg['LR']} d_model={cfg['D_MODEL']}")
+    print(f"  开关: target={cfg['TARGET']}  w_profile={cfg['W_PROFILE']}  "
+          f"log_target={cfg['LOG_TARGET']}  softplus={cfg['SOFTPLUS']}  tag={exp_tag}")
     print("=" * 78)
 
     data = load_matched_dir(Path(cfg["MATCH_DIR"]), cfg["MATCH_GLOB"], cfg["STRUCT"],
@@ -889,6 +981,7 @@ def run(args) -> int:
     holdout = args.holdout if args.holdout is not None else cfg["HOLDOUT"]
     run_cv = (getattr(args, "cv", False) or cfg["RUN_CV"]) and not getattr(args, "no_cv", False)
     do_final = (getattr(args, "final", False) or cfg["TRAIN_FINAL"]) and not getattr(args, "no_final", False)
+    suffix = f"_{exp_tag}" if exp_tag else ""    # 实验后缀 → 标签 Holdout<E|W…>
     # 出图开关:绘图代码在 acdl_plotting.py;关掉后仍会落盘 predictions_*.npz,可事后重画
     plots = bool(cfg.get("PLOTS", True)) and not getattr(args, "no_plots", False)
     if holdout <= 0 and not run_cv and not do_final:
@@ -897,6 +990,8 @@ def run(args) -> int:
 
     # --- 层几何(平均高度/气压),用于出图与存档 ---
     geom = layer_geometry(X, data.get("level"))
+    cfg["LAYER_TOP_KM"] = (np.asarray(geom[0], dtype=float).tolist()
+                           if geom[0] is not None else None)   # 高度加权/硬截断按层底高度算 w_l
     res_dir0 = out_dir / "results"; res_dir0.mkdir(parents=True, exist_ok=True)
     with open(res_dir0 / "layer_geometry.json", "w", encoding="utf-8") as fh:
         json.dump({"height_km": np.asarray(geom[0]).tolist(),
@@ -915,7 +1010,7 @@ def run(args) -> int:
         print(f"\n[HOLDOUT] 随机留出 {holdout:.0%}(train={len(tr)}, test={len(te)})"
               f" —— 注意:随机划分,同格点/同时次样本可能跨集,结果偏乐观")
         met, *_ = run_fold(X, T, tr, te, "Holdout", cfg)
-        s = summarize([met], "Holdout", out_dir, geom=geom, plots=plots)
+        s = summarize([met], "Holdout" + suffix, out_dir, geom=geom, plots=plots)
         if s: curves_all["Holdout"] = s["r2_mean"]
         summary["holdout"] = {k: v for k, v in met.items() if not isinstance(v, np.ndarray)}
     if not run_cv and not do_final:
@@ -925,12 +1020,12 @@ def run(args) -> int:
     if run_cv:
         t0 = time.perf_counter()
         sp = spatial_block_cv(X, T, cfg)
-        s = summarize(sp, "Spatial", out_dir, geom=geom, plots=plots)
+        s = summarize(sp, "Spatial" + suffix, out_dir, geom=geom, plots=plots)
         if s:
             curves_all["Spatial"] = s["r2_mean"]
             summary["spatial"] = {k: v for k, v in s.items() if k != "r2_mean"}
         tp = temporal_block_cv(X, T, t_dn, cfg)
-        s = summarize(tp, "Temporal", out_dir, geom=geom, plots=plots)
+        s = summarize(tp, "Temporal" + suffix, out_dir, geom=geom, plots=plots)
         if s:
             curves_all["Temporal"] = s["r2_mean"]
             summary["temporal"] = {k: v for k, v in s.items() if k != "r2_mean"}
@@ -944,6 +1039,10 @@ def run(args) -> int:
                           title="Per-layer R² of absolute extinction — all protocols")
     if do_final:
         train_final_model(X, T, cfg, out_dir, geom=geom)
+    # 实验配置快照(追溯:每次运行把全部生效配置存入 cv_summary.json)
+    summary["config"] = {k: (v if isinstance(v, (int, float, str, bool, list)) else str(v))
+                         for k, v in cfg.items() if not k.startswith("_")}
+    summary["config"]["exp_tag"] = exp_tag
     with open(out_dir / "results" / "cv_summary.json", "w", encoding="utf-8") as fh:
         json.dump(summary, fh, ensure_ascii=False, indent=2)
     print("\n[DONE]")
@@ -1029,6 +1128,17 @@ if __name__ == "__main__":
                     help="额外用全量数据训练并保存 model_final.pt(默认关闭)")
     ap.add_argument("--no-plots", action="store_true",
                     help="不出图(只落盘 predictions_*.npz);事后用 Plot_Training_Results.py 重画")
+    # ---- 优化路线 Step 2/3 开关 ----
+    ap.add_argument("--w-profile", choices=("none", "decay", "hard5km"), default=None,
+                    help="损失高度权重: none=全层等权(基线) / decay=低层加权 exp(-层底/τ) / hard5km=仅层底<5km 计损失(输出仍32层)")
+    ap.add_argument("--w-decay-tau", type=float, default=None, help="decay 权重的 τ(km),默认 3.0")
+    ap.add_argument("--hard-top-km", type=float, default=None, help="hard 截断厚度(km),默认 5.0")
+    ap.add_argument("--log-target", action="store_true",
+                    help="E2b: 目标取 ln(clip(y,1e-6)) 后再标准化;评估自动还原原空间(仅 abs)")
+    ap.add_argument("--softplus", action="store_true",
+                    help="E2c: 解码器输出过 softplus(σ̂ 恒≥0);目标 z-score 自动关闭,原空间回归")
+    ap.add_argument("--tag", default=None,
+                    help="实验标签后缀:输出文件命名 <tag>_<后缀>(如 Holdout_E2b)")
     ap.add_argument("--no-cv", action="store_true", help="(兼容)显式关闭 CV")
     ap.add_argument("--no-final", action="store_true", help="(兼容)显式关闭全量模型")
     ap.add_argument("--selftest", action="store_true", help="合成数据自检")
