@@ -1,0 +1,235 @@
+
+[DAY] 20220601
+    [CACHE] 命中 ACDL_20220601.npz(廓线 114144)
+    [SINGLE] 单层场 ['blh', 'tcwv', 'zsfc'];网格 205×249;时次 720
+    廓线 114144;网格 (205, 249);时次 720
+    (节点,时次) 组数 1361; 时间超窗剔除 0 廓线; 域外剔除 107968 廓线(距离上限 0.18°) → 保留 6176/114144 条
+    耗时: 读ACDL 1.16s | 匹配聚合 190.10s | 样本 1361×135
+    [SAVE] D:\matchdata_fixed_case4\ACDL_ERA5_MatchV2_20220601.mat  rows=1361 cols=135
+
+[DAY] 20220602
+    [CACHE] 命中 ACDL_20220602.npz(廓线 93088)
+    廓线 93088;网格 (205, 249);时次 720
+    (节点,时次) 组数 1007; 时间超窗剔除 0 廓线; 域外剔除 88530 廓线(距离上限 0.18°) → 保留 4558/93088 条
+    耗时: 读ACDL 1.16s | 匹配聚合 134.73s | 样本 1007×135
+    [SAVE] D:\matchdata_fixed_case4\ACDL_ERA5_MatchV2_20220602.mat  rows=1007 cols=135
+
+[DAY] 20220603
+Traceback (most recent call last):
+  File "C:\Users\admin\Desktop\Main_ACDL_ERA5_SpatiotemporalAttention_DL\Match_ACDL_ERA5_FromScratch.py", line 1055, in <module>
+    run(a.start, a.end, a.dry_run, skip_existing=a.skip_existing)
+    ~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\admin\Desktop\Main_ACDL_ERA5_SpatiotemporalAttention_DL\Match_ACDL_ERA5_FromScratch.py", line 748, in run
+    acdl = load_acdl_day_cached(acdl_dir, yyyymmdd, use_cache=CONFIG["USE_CACHE"])
+  File "C:\Users\admin\Desktop\Main_ACDL_ERA5_SpatiotemporalAttention_DL\Match_ACDL_ERA5_FromScratch.py", line 384, in load_acdl_day_cached
+    data = load_acdl_day(acdl_dir, yyyymmdd)
+  File "C:\Users\admin\Desktop\Main_ACDL_ERA5_SpatiotemporalAttention_DL\Match_ACDL_ERA5_FromScratch.py", line 325, in load_acdl_day
+    "cad": np.vstack(cads),                 # (N, 1291)
+           ~~~~~~~~~^^^^^^
+  File "C:\Users\admin\Desktop\Main_ACDL_ERA5_SpatiotemporalAttention_DL\.venv\Lib\site-packages\numpy\_core\shape_base.py", line 290, in vstack
+    return _nx.concatenate(arrs, 0, dtype=dtype, casting=casting)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+numpy._core._exceptions._ArrayMemoryError: Unable to allocate 561. MiB for an array with shape (114000, 1291) and data type float32
+
+[DAY] 20220601  [SKIP] 已存在:ACDL_ERA5_MatchV2_20220601.mat
+
+[DAY] 20220602  [SKIP] 已存在:ACDL_ERA5_MatchV2_20220602.mat
+
+[DAY] 20220603
+    [CACHE] 写入 ACDL_20220603.npz
+    [SINGLE] 单层场 ['blh', 'tcwv', 'zsfc'];网格 205×249;时次 720
+    廓线 114000;网格 (205, 249);时次 720
+    (节点,时次) 组数 1346; 时间超窗剔除 0 廓线; 域外剔除 107883 廓线(距离上限 0.18°) → 保留 6117/114000 条
+    耗时: 读ACDL 17.73s | 匹配聚合 186.83s | 样本 1346×135
+    [SAVE] D:\matchdata_fixed_case4\ACDL_ERA5_MatchV2_20220603.mat  rows=1346 cols=135
+
+[DAY] 20220604
+    [CACHE] 写入 ACDL_20220604.npz
+    廓线 118096;网格 (205, 249);时次 720
+    (节点,时次) 组数 1243; 时间超窗剔除 0 廓线; 域外剔除 112495 廓线(距离上限 0.18°) → 保留 5601/118096 条
+    耗时: 读ACDL 16.06s | 匹配聚合 169.22s | 样本 1243×135
+    [SAVE] D:\matchdata_fixed_case4\ACDL_ERA5_MatchV2_20220604.mat  rows=1243 cols=135
+
+[DAY] 20220605
+    [CACHE] 写入 ACDL_20220605.npz
+    廓线 111408;网格 (205, 249);时次 720
+    (节点,时次) 组数 1256; 时间超窗剔除 0 廓线; 域外剔除 105752 廓线(距离上限 0.18°) → 保留 5656/111408 条
+    耗时: 读ACDL 13.85s | 匹配聚合 164.83s | 样本 1256×135
+    [SAVE] D:\matchdata_fixed_case4\ACDL_ERA5_MatchV2_20220605.mat  rows=1256 cols=135
+
+[DAY] 20220606
+    [CACHE] 写入 ACDL_20220606.npz
+    廓线 114144;网格 (205, 249);时次 720
+    (节点,时次) 组数 1341; 时间超窗剔除 0 廓线; 域外剔除 108043 廓线(距离上限 0.18°) → 保留 6101/114144 条
+    耗时: 读ACDL 12.82s | 匹配聚合 179.19s | 样本 1341×135
+    [SAVE] D:\matchdata_fixed_case4\ACDL_ERA5_MatchV2_20220606.mat  rows=1341 cols=135
+
+[DAY] 20220607
+    [CACHE] 写入 ACDL_20220607.npz
+    廓线 110208;网格 (205, 249);时次 720
+    (节点,时次) 组数 1182; 时间超窗剔除 0 廓线; 域外剔除 104876 廓线(距离上限 0.18°) → 保留 5332/110208 条
+    耗时: 读ACDL 15.45s | 匹配聚合 154.06s | 样本 1182×135
+    [SAVE] D:\matchdata_fixed_case4\ACDL_ERA5_MatchV2_20220607.mat  rows=1182 cols=135
+
+[DAY] 20220608
+    [CACHE] 写入 ACDL_20220608.npz
+    廓线 110208;网格 (205, 249);时次 720
+    (节点,时次) 组数 1354; 时间超窗剔除 0 廓线; 域外剔除 104030 廓线(距离上限 0.18°) → 保留 6178/110208 条
+    耗时: 读ACDL 16.66s | 匹配聚合 178.36s | 样本 1354×135
+    [SAVE] D:\matchdata_fixed_case4\ACDL_ERA5_MatchV2_20220608.mat  rows=1354 cols=135
+
+[DAY] 20220609
+    [CACHE] 写入 ACDL_20220609.npz
+    廓线 105936;网格 (205, 249);时次 720
+    (节点,时次) 组数 1184; 时间超窗剔除 0 廓线; 域外剔除 100617 廓线(距离上限 0.18°) → 保留 5319/105936 条
+    耗时: 读ACDL 15.20s | 匹配聚合 156.93s | 样本 1184×135
+    [SAVE] D:\matchdata_fixed_case4\ACDL_ERA5_MatchV2_20220609.mat  rows=1184 cols=135
+
+[DAY] 20220610
+    [CACHE] 写入 ACDL_20220610.npz
+    廓线 105456;网格 (205, 249);时次 720
+    (节点,时次) 组数 1277; 时间超窗剔除 0 廓线; 域外剔除 99701 廓线(距离上限 0.18°) → 保留 5755/105456 条
+    耗时: 读ACDL 15.47s | 匹配聚合 167.85s | 样本 1277×135
+    [SAVE] D:\matchdata_fixed_case4\ACDL_ERA5_MatchV2_20220610.mat  rows=1277 cols=135
+
+[DAY] 20220611
+    [CACHE] 写入 ACDL_20220611.npz
+    廓线 118080;网格 (205, 249);时次 720
+    (节点,时次) 组数 1219; 时间超窗剔除 0 廓线; 域外剔除 112564 廓线(距离上限 0.18°) → 保留 5516/118080 条
+    耗时: 读ACDL 16.03s | 匹配聚合 162.89s | 样本 1219×135
+    [SAVE] D:\matchdata_fixed_case4\ACDL_ERA5_MatchV2_20220611.mat  rows=1219 cols=135
+
+[DAY] 20220612
+    [CACHE] 写入 ACDL_20220612.npz
+    廓线 113248;网格 (205, 249);时次 720
+    (节点,时次) 组数 1102; 时间超窗剔除 0 廓线; 域外剔除 108266 廓线(距离上限 0.18°) → 保留 4982/113248 条
+    耗时: 读ACDL 17.51s | 匹配聚合 160.49s | 样本 1102×135
+    [SAVE] D:\matchdata_fixed_case4\ACDL_ERA5_MatchV2_20220612.mat  rows=1102 cols=135
+
+[DAY] 20220613
+    [CACHE] 写入 ACDL_20220613.npz
+    廓线 114144;网格 (205, 249);时次 720
+    (节点,时次) 组数 1327; 时间超窗剔除 0 廓线; 域外剔除 108093 廓线(距离上限 0.18°) → 保留 6051/114144 条
+    耗时: 读ACDL 15.12s | 匹配聚合 171.93s | 样本 1327×135
+    [SAVE] D:\matchdata_fixed_case4\ACDL_ERA5_MatchV2_20220613.mat  rows=1327 cols=135
+
+[DAY] 20220614
+    [CACHE] 写入 ACDL_20220614.npz
+    廓线 102384;网格 (205, 249);时次 720
+    (节点,时次) 组数 1199; 时间超窗剔除 0 廓线; 域外剔除 97035 廓线(距离上限 0.18°) → 保留 5349/102384 条
+    耗时: 读ACDL 11.72s | 匹配聚合 156.57s | 样本 1199×135
+    [SAVE] D:\matchdata_fixed_case4\ACDL_ERA5_MatchV2_20220614.mat  rows=1199 cols=135
+
+[DAY] 20220615
+    [CACHE] 写入 ACDL_20220615.npz
+    廓线 110240;网格 (205, 249);时次 720
+    (节点,时次) 组数 1365; 时间超窗剔除 0 廓线; 域外剔除 104069 廓线(距离上限 0.18°) → 保留 6171/110240 条
+    耗时: 读ACDL 14.75s | 匹配聚合 178.19s | 样本 1365×135
+    [SAVE] D:\matchdata_fixed_case4\ACDL_ERA5_MatchV2_20220615.mat  rows=1365 cols=135
+
+[DAY] 20220616
+    [CACHE] 写入 ACDL_20220616.npz
+    廓线 39360;网格 (205, 249);时次 720
+    (节点,时次) 组数 598; 时间超窗剔除 0 廓线; 域外剔除 36655 廓线(距离上限 0.18°) → 保留 2705/39360 条
+    耗时: 读ACDL 2.20s | 匹配聚合 77.13s | 样本 598×135
+    [SAVE] D:\matchdata_fixed_case4\ACDL_ERA5_MatchV2_20220616.mat  rows=598 cols=135
+
+[DAY] 20220617
+    [CACHE] 写入 ACDL_20220617.npz
+    廓线 103680;网格 (205, 249);时次 720
+    (节点,时次) 组数 1107; 时间超窗剔除 0 廓线; 域外剔除 98667 廓线(距离上限 0.18°) → 保留 5013/103680 条
+    耗时: 读ACDL 23.13s | 匹配聚合 142.41s | 样本 1107×135
+    [SAVE] D:\matchdata_fixed_case4\ACDL_ERA5_MatchV2_20220617.mat  rows=1107 cols=135
+
+[DAY] 20220618
+    [CACHE] 写入 ACDL_20220618.npz
+    廓线 107616;网格 (205, 249);时次 720
+    (节点,时次) 组数 1010; 时间超窗剔除 0 廓线; 域外剔除 103076 廓线(距离上限 0.18°) → 保留 4540/107616 条
+    耗时: 读ACDL 13.89s | 匹配聚合 129.92s | 样本 1010×135
+    [SAVE] D:\matchdata_fixed_case4\ACDL_ERA5_MatchV2_20220618.mat  rows=1010 cols=135
+
+[DAY] 20220619
+    [CACHE] 写入 ACDL_20220619.npz
+    廓线 104368;网格 (205, 249);时次 720
+    (节点,时次) 组数 1282; 时间超窗剔除 11 廓线; 域外剔除 98513 廓线(距离上限 0.18°) → 保留 5855/104368 条
+    耗时: 读ACDL 15.20s | 匹配聚合 166.04s | 样本 1282×135
+    [SAVE] D:\matchdata_fixed_case4\ACDL_ERA5_MatchV2_20220619.mat  rows=1282 cols=135
+
+[DAY] 20220620
+    [CACHE] 写入 ACDL_20220620.npz
+    廓线 114144;网格 (205, 249);时次 720
+    (节点,时次) 组数 1312; 时间超窗剔除 0 廓线; 域外剔除 108179 廓线(距离上限 0.18°) → 保留 5965/114144 条
+    耗时: 读ACDL 15.89s | 匹配聚合 206.20s | 样本 1312×135
+    [SAVE] D:\matchdata_fixed_case4\ACDL_ERA5_MatchV2_20220620.mat  rows=1312 cols=135
+
+[DAY] 20220621
+    [CACHE] 写入 ACDL_20220621.npz
+    廓线 110208;网格 (205, 249);时次 720
+    (节点,时次) 组数 945; 时间超窗剔除 0 廓线; 域外剔除 105979 廓线(距离上限 0.18°) → 保留 4229/110208 条
+    耗时: 读ACDL 35.88s | 匹配聚合 134.89s | 样本 945×135
+    [SAVE] D:\matchdata_fixed_case4\ACDL_ERA5_MatchV2_20220621.mat  rows=945 cols=135
+
+[DAY] 20220622
+    [CACHE] 写入 ACDL_20220622.npz
+    廓线 114144;网格 (205, 249);时次 720
+    (节点,时次) 组数 1352; 时间超窗剔除 0 廓线; 域外剔除 107982 廓线(距离上限 0.18°) → 保留 6162/114144 条
+    耗时: 读ACDL 274.51s | 匹配聚合 173.12s | 样本 1352×135
+    [SAVE] D:\matchdata_fixed_case4\ACDL_ERA5_MatchV2_20220622.mat  rows=1352 cols=135
+
+[DAY] 20220623
+    [CACHE] 写入 ACDL_20220623.npz
+    廓线 47232;网格 (205, 249);时次 720
+    (节点,时次) 组数 427; 时间超窗剔除 0 廓线; 域外剔除 45337 廓线(距离上限 0.18°) → 保留 1895/47232 条
+    耗时: 读ACDL 7.16s | 匹配聚合 57.52s | 样本 427×135
+    [SAVE] D:\matchdata_fixed_case4\ACDL_ERA5_MatchV2_20220623.mat  rows=427 cols=135
+
+[DAY] 20220624
+    [CACHE] 写入 ACDL_20220624.npz
+    廓线 114144;网格 (205, 249);时次 720
+    (节点,时次) 组数 1358; 时间超窗剔除 0 廓线; 域外剔除 107980 廓线(距离上限 0.18°) → 保留 6164/114144 条
+    耗时: 读ACDL 41.33s | 匹配聚合 176.64s | 样本 1358×135
+    [SAVE] D:\matchdata_fixed_case4\ACDL_ERA5_MatchV2_20220624.mat  rows=1358 cols=135
+
+[DAY] 20220625
+    [CACHE] 写入 ACDL_20220625.npz
+    廓线 104080;网格 (205, 249);时次 720
+    (节点,时次) 组数 1192; 时间超窗剔除 0 廓线; 域外剔除 98708 廓线(距离上限 0.18°) → 保留 5372/104080 条
+    耗时: 读ACDL 34.77s | 匹配聚合 156.91s | 样本 1192×135
+    [SAVE] D:\matchdata_fixed_case4\ACDL_ERA5_MatchV2_20220625.mat  rows=1192 cols=135
+
+[DAY] 20220626
+    [CACHE] 写入 ACDL_20220626.npz
+    廓线 111040;网格 (205, 249);时次 720
+    (节点,时次) 组数 1140; 时间超窗剔除 0 廓线; 域外剔除 105845 廓线(距离上限 0.18°) → 保留 5195/111040 条
+    耗时: 读ACDL 40.17s | 匹配聚合 147.72s | 样本 1140×135
+    [SAVE] D:\matchdata_fixed_case4\ACDL_ERA5_MatchV2_20220626.mat  rows=1140 cols=135
+
+[DAY] 20220627
+    [CACHE] 写入 ACDL_20220627.npz
+    廓线 114192;网格 (205, 249);时次 720
+    (节点,时次) 组数 1293; 时间超窗剔除 0 廓线; 域外剔除 108319 廓线(距离上限 0.18°) → 保留 5873/114192 条
+    耗时: 读ACDL 38.84s | 匹配聚合 168.86s | 样本 1293×135
+    [SAVE] D:\matchdata_fixed_case4\ACDL_ERA5_MatchV2_20220627.mat  rows=1293 cols=135
+
+[DAY] 20220628
+    [CACHE] 写入 ACDL_20220628.npz
+    廓线 110256;网格 (205, 249);时次 720
+    (节点,时次) 组数 1037; 时间超窗剔除 0 廓线; 域外剔除 105549 廓线(距离上限 0.18°) → 保留 4707/110256 条
+    耗时: 读ACDL 37.63s | 匹配聚合 131.83s | 样本 1037×135
+    [SAVE] D:\matchdata_fixed_case4\ACDL_ERA5_MatchV2_20220628.mat  rows=1037 cols=135
+
+[DAY] 20220629
+    [CACHE] 写入 ACDL_20220629.npz
+    廓线 90560;网格 (205, 249);时次 720
+    (节点,时次) 组数 965; 时间超窗剔除 0 廓线; 域外剔除 86181 廓线(距离上限 0.18°) → 保留 4379/90560 条
+    耗时: 读ACDL 29.08s | 匹配聚合 127.61s | 样本 965×135
+    [SAVE] D:\matchdata_fixed_case4\ACDL_ERA5_MatchV2_20220629.mat  rows=965 cols=135
+
+[DAY] 20220630
+    [CACHE] 写入 ACDL_20220630.npz
+    廓线 94464;网格 (205, 249);时次 720
+    (节点,时次) 组数 1079; 时间超窗剔除 3850 廓线; 域外剔除 89571 廓线(距离上限 0.18°) → 保留 4893/94464 条
+    耗时: 读ACDL 31.11s | 匹配聚合 136.48s | 样本 1079×135
+    [SAVE] D:\matchdata_fixed_case4\ACDL_ERA5_MatchV2_20220630.mat  rows=1079 cols=135
+
+[DONE] 共写出样本行数 32492

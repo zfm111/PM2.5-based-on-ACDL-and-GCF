@@ -1,0 +1,8 @@
+{
+    "python.defaultInterpreterPath": "C:\\Users\\admin\\anaconda3\\envs\\era5_work\\python.exe",
+    "python.analysis.extraPaths": [
+        "."
+    ],
+    "python-envs.defaultEnvManager": "ms-python.python:venv",
+    "python-envs.defaultPackageManager": "ms-python.python:pip"
+}

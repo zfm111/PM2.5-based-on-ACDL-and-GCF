@@ -1,0 +1,24 @@
+{
+  "holdout": {
+    "R2_global": -19.91653409865232,
+    "RMSE_global": 0.5470415652590889,
+    "MAE_global": 0.041053461893483766,
+    "N_valid": 179220,
+    "N_test": 6972,
+    "fold": "Holdout",
+    "best_epoch": 163,
+    "val_loss": 0.1606690138578415,
+    "n_train": 27888,
+    "n_test": 6972,
+    "target": "frac",
+    "METRIC": "abs_extinction (km^-1)",
+    "recon": "obs_od",
+    "TARGET_KIND": "frac",
+    "n_gcf": 2079,
+    "n_gcf_all": 2079,
+    "GCF_R2": 0.4110868411102655,
+    "GCF_MAE": 0.0416431564883101,
+    "GCF_R2_all": 0.4110868411102655,
+    "GCF_MAE_all": 0.0416431564883101
+  }
+}
