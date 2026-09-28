@@ -60,16 +60,17 @@ def _save(fig, out_base: Path, plt) -> None:
 
 
 def load_layer_geometry(results_dir: Path):
-    """读 results/layer_geometry.json → (h_km, p_hpa);缺失返回 (None, None)。"""
+    """读 results/layer_geometry.json → (h_km, p_hpa, h_agl_km);缺失项为 None。"""
     p = Path(results_dir) / "layer_geometry.json"
     if not p.exists():
-        return None, None
+        return None, None, None
     with open(p, encoding="utf-8") as fh:
         g = json.load(fh)
     h = g.get("height_km")
     pr = g.get("pressure_hpa")
-    return (None if h is None else np.asarray(h, dtype=float),
-            None if pr is None else np.asarray(pr, dtype=float))
+    agl = g.get("height_agl_km")
+    to_arr = lambda v: (None if v is None else np.asarray(v, dtype=float))
+    return to_arr(h), to_arr(pr), to_arr(agl)
 
 
 # ============================================================
@@ -80,7 +81,7 @@ def plot_per_layer_r2(curves: dict, out_base: Path, geom=None, title: str = "") 
     plt = _plt()
     if plt is None:
         return False
-    h_km, p_hpa = geom if geom is not None else (None, None)
+    h_km, p_hpa = (geom[0], geom[1]) if geom is not None else (None, None)
     n_lv = len(next(iter(curves.values())))
     y = h_km if (h_km is not None and len(h_km) == n_lv) else np.arange(n_lv, dtype=float)
     ylabel = "Altitude (km)" if h_km is not None else "Layer index (L00=lowest)"

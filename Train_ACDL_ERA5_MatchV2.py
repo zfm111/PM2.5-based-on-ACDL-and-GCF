@@ -165,6 +165,26 @@ def decode_varnames(f, ds) -> list[str] | None:
         return None
 
 
+def read_meta_vertical(g, f) -> str | None:
+    """读匹配产物 Meta.Vertical(asl/agl);缺失/解析失败返回 None。"""
+    try:
+        if "Meta" not in g or "Vertical" not in g["Meta"]:
+            return None
+        v = np.asarray(g["Meta"]["Vertical"][()])
+        if v.dtype == object or v.dtype == h5py.ref_dtype:   # cell-of-char(同 VarNames 编码)
+            chars = []
+            for ref in v.ravel():
+                chars.append("".join(chr(int(c)) for c in np.asarray(f[ref][()]).ravel()))
+            return "".join(chars).strip() or None
+        if v.dtype.kind in "SU":
+            return str(v.ravel()[0]).strip() or None
+        if v.dtype.kind in "uif":                            # 字符码数组(uint16 等)
+            return "".join(chr(int(c)) for c in v.ravel()).strip() or None
+    except Exception:
+        return None
+    return None
+
+
 def load_matched_dir(match_dir: Path, pattern: str, struct: str, add_cols=()):
     """读取目录下全部匹配样本,拼成 X(+可选额外列)/ y / 元数据。
 
@@ -175,9 +195,11 @@ def load_matched_dir(match_dir: Path, pattern: str, struct: str, add_cols=()):
         raise FileNotFoundError(f"{match_dir} 下没有 {pattern}")
     print(f"[DATA] 找到 {len(files)} 个匹配文件")
     Xs, Xe, ys, times, zsfc_l, src = [], [], [], [], [], []
+    dem_m_l = []
     names_ref = None
     level_ref = None
     extra_names_ref = None
+    meta_vertical = None
     n_extra_seen = 0
     for fp in files:
         with h5py.File(fp, "r") as f:
@@ -206,6 +228,8 @@ def load_matched_dir(match_dir: Path, pattern: str, struct: str, add_cols=()):
                 names_ref = names
             if level_ref is None and "Level" in g:
                 level_ref = np.asarray(g["Level"][()]).ravel()
+            if meta_vertical is None:
+                meta_vertical = read_meta_vertical(g, f)
         base = D[:, :132]
         extra_idx, extra_names = [], []
         if names is not None:
@@ -220,6 +244,9 @@ def load_matched_dir(match_dir: Path, pattern: str, struct: str, add_cols=()):
         # Z_sfc(地表高度)用于修正 L00 厚度
         if names is not None and CONFIG["ZSFC_COL"] in names:
             zsfc_l.append(D[:, names.index(CONFIG["ZSFC_COL"])])
+        # agl 产物:DEM_m(逐组真实地表海拔,已 km→m) — 训练端 dz/GCF 用它替代 Z_sfc
+        if names is not None and "DEM_m" in names:
+            dem_m_l.append(D[:, names.index("DEM_m")])
         X_f, y_f, t_f = build_features(base, names)
         Xs.append(X_f); ys.append(y_f); times.append(t_f)
         src.append(fp.name)
@@ -236,7 +263,9 @@ def load_matched_dir(match_dir: Path, pattern: str, struct: str, add_cols=()):
         msg += f";Z_sfc 用于修正 L00 厚度(中位 {np.nanmedian(zsfc):.0f} m)"
     print(msg)
     return {"X": X, "X_extra": X_extra, "y": y, "time": t, "names": names_ref,
-            "extra_names": extra_names_ref, "zsfc": zsfc, "level": level_ref, "files": src}
+            "extra_names": extra_names_ref, "zsfc": zsfc, "level": level_ref, "files": src,
+            "dem_m": (np.concatenate(dem_m_l) if dem_m_l else None),
+            "vertical": meta_vertical}
 
 
 def build_features(D: np.ndarray, names: list[str] | None):
@@ -308,7 +337,11 @@ def build_targets(y_abs: np.ndarray, X: np.ndarray, cfg: dict, zsfc=None) -> dic
     bottom = np.empty_like(H)
     bottom[:, 0] = surf if zsfc is not None else float(cfg.get("SURF_M", 0.0))
     bottom[:, 1:] = H[:, :-1]
-    low = bottom < float(cfg["GCF_TOP_M"])
+    if str(cfg.get("VERTICAL", "asl")) == "agl" and zsfc is not None:
+        # agl 口径:H 列 = dem+AGL 段顶 → 层底离地高 = bottom − dem;L00 底恒为 0
+        low = (bottom - zsfc[:, None]) < float(cfg["GCF_TOP_M"])
+    else:
+        low = bottom < float(cfg["GCF_TOP_M"])
     # 近地面窗口内的层必须**全部有效**,否则 GCF 无法定义(不能把"缺数据"当成 0)
     low_complete = np.all(valid | ~low, axis=1)
     with np.errstate(invalid="ignore"):
@@ -743,19 +776,29 @@ def temporal_block_cv(X, T, time_dn, cfg):
 # ============================================================
 # 层几何(高度/气压)+ 逐层 R² 出图
 # ============================================================
-def layer_geometry(X: np.ndarray, level_hpa: np.ndarray | None):
-    """返回每段的 (平均高度 km, 代表气压 hPa)。高度取样本 H_k* 的均值;气压取该段上下层的均值。"""
+def layer_geometry(X: np.ndarray, level_hpa: np.ndarray | None,
+                   cfg: dict | None = None, zsfc: np.ndarray | None = None):
+    """返回 (每段平均高度 km, 代表气压 hPa, 每段平均离地高度 km 或 None)。
+
+    高度取样本 H_k* 的均值;气压取该段上下层的均值;
+    agl 口径下 h_agl_km = mean(H_k − dem)/1000(评估台 AGL 分带用)。
+    """
     n_lv = CONFIG["N_LEVEL"]
     h_m = X[:, CONFIG["COL_H0"]:CONFIG["COL_H0"] + n_lv].astype(np.float64)
     with np.errstate(invalid="ignore"):
         h_km = np.nanmean(h_m, axis=0) / 1000.0
+    h_agl_km = None
+    if (cfg is not None and str(cfg.get("VERTICAL", "asl")) == "agl"
+            and zsfc is not None and np.isfinite(zsfc).all()):
+        with np.errstate(invalid="ignore"):
+            h_agl_km = (np.nanmean(h_m - zsfc[:, None], axis=0)) / 1000.0
     p_seg = None
     if level_hpa is not None and len(level_hpa) == n_lv:
         lv = np.asarray(level_hpa, dtype=np.float64)      # hPa 降序 1000→10
         p_seg = np.empty(n_lv)
         p_seg[0] = lv[0]
         p_seg[1:] = 0.5 * (lv[:-1] + lv[1:])
-    return h_km, p_seg
+    return h_km, p_seg, h_agl_km
 
 
 # ============================================================
@@ -783,7 +826,8 @@ def save_predictions(results: list[dict], tag: str, out_dir: Path, geom=None) ->
         "dz_km": cat("_dz"), "ok_od": cat("_ok_od"),
         "lon": cat("_lon"), "lat": cat("_lat"), "time": cat("_time"),
         "h_km": (np.asarray(geom[0], dtype=np.float32) if geom and geom[0] is not None else np.array([])),
-        "p_hpa": (np.asarray(geom[1], dtype=np.float32) if geom and geom[1] is not None else np.array([])),
+        "p_hpa": (np.asarray(geom[1], dtype=np.float32) if geom and len(geom) > 1 and geom[1] is not None else np.array([])),
+        "h_agl_km": (np.asarray(geom[2], dtype=np.float32) if geom and len(geom) > 2 and geom[2] is not None else np.array([])),
     }
     p = Path(out_dir) / "results" / f"predictions_{tag}.npz"
     p.parent.mkdir(parents=True, exist_ok=True)
@@ -968,13 +1012,25 @@ def run(args) -> int:
     print(f"[TARGET] 模式 = {cfg['TARGET']}"
           + ("(绝对消光 σ_l, km⁻¹)" if cfg["TARGET"] == "abs"
              else "(厚度加权逐层占比 f_l,只学形状)"))
+    # 垂直口径:agl 产物(H=dem+AGL 段顶) → dz/GCF 用 DEM_m 列;asl 沿用 Z_sfc(历史行为不变)
+    vertical = str(data.get("vertical") or "asl")
+    cfg["VERTICAL"] = vertical
+    zsfc_eff = zsfc
+    if vertical == "agl":
+        dem_m = data.get("dem_m")
+        if dem_m is not None:
+            zsfc_eff = dem_m
+            print(f"[VERTICAL] agl 产物:dz/GCF 使用 DEM_m(真实地表) 替代 Z_sfc;"
+                  f"DEM_m 中位 {np.nanmedian(dem_m):.0f} m")
+        else:
+            print("[VERTICAL] agl 产物但无 DEM_m 列 → 退回 Z_sfc(结果口径注明)")
     if X_extra is not None:
         X = np.hstack([X, X_extra]).astype(np.float32)
         cfg["N_EXTRA"] = int(X_extra.shape[1])
         print(f"[COLS] 额外 token 维度 = {cfg['N_EXTRA']} ({data.get('extra_names')})")
     else:
         cfg["N_EXTRA"] = 0
-    T = build_targets(y, X, cfg, zsfc=zsfc)
+    T = build_targets(y, X, cfg, zsfc=zsfc_eff)
     report_target_stats(T, y)
 
     # --- 模式解析:默认 = 一次随机留出训练(快);CV 与全量模型需显式开启 ---
@@ -989,14 +1045,17 @@ def run(args) -> int:
         holdout = 0.2
 
     # --- 层几何(平均高度/气压),用于出图与存档 ---
-    geom = layer_geometry(X, data.get("level"))
+    geom = layer_geometry(X, data.get("level"), cfg=cfg, zsfc=zsfc_eff)
     cfg["LAYER_TOP_KM"] = (np.asarray(geom[0], dtype=float).tolist()
                            if geom[0] is not None else None)   # 高度加权/硬截断按层底高度算 w_l
     res_dir0 = out_dir / "results"; res_dir0.mkdir(parents=True, exist_ok=True)
     with open(res_dir0 / "layer_geometry.json", "w", encoding="utf-8") as fh:
         json.dump({"height_km": np.asarray(geom[0]).tolist(),
                    "pressure_hpa": None if geom[1] is None else np.asarray(geom[1]).tolist(),
-                   "note": "height = mean of H_k* over samples; pressure = segment-mean of Level"},
+                   "height_agl_km": (None if geom[2] is None else np.asarray(geom[2]).tolist()),
+                   "vertical": vertical,
+                   "note": "height = mean of H_k* over samples; agl = mean(H_k - DEM); "
+                           "pressure = segment-mean of Level"},
                   fh, ensure_ascii=False, indent=2)
 
     summary = {}

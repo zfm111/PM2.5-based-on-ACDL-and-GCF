@@ -43,13 +43,21 @@ EE_FOOTNOTE = "EE = ±(0.05 + 0.15×AOD),沿用 550nm(MODIS 陆地, Levy 2010)�
 # ============================================================
 # 层几何与分层带
 # ============================================================
-def layer_mid_heights(npz) -> np.ndarray:
-    """层中点高度(km):bot_0=0(近似地表),bot_k=top_{k-1};mid=(bot+top)/2。"""
-    top = np.asarray(npz["h_km"], dtype=np.float64)
+def layer_mid_heights(npz) -> tuple[np.ndarray, np.ndarray, str]:
+    """层中点高度(km):bot_0=0,bot_k=top_{k-1};mid=(bot+top)/2。
+
+    agl 产物(npz 带 h_agl_km 且非空)优先用离地高度分带;返回 (mid_km, bot_km, 口径标签)。
+    """
+    if "h_agl_km" in npz.files and npz["h_agl_km"].size:
+        top = np.asarray(npz["h_agl_km"], dtype=np.float64)
+        src = "agl(离地高度)"
+    else:
+        top = np.asarray(npz["h_km"], dtype=np.float64)
+        src = "asl(海拔)"
     bot = np.empty_like(top)
     bot[0] = 0.0
     bot[1:] = top[:-1]
-    return 0.5 * (bot + np.maximum(top, bot)), bot
+    return 0.5 * (bot + np.maximum(top, bot)), bot, src
 
 
 def band_of(mid_km: np.ndarray) -> np.ndarray:
@@ -423,7 +431,8 @@ def main() -> int:
             raise SystemExit("旧 npz 无 dz_km:需 --match-dir 以重放留出索引补算")
         dz, ok_od = reconstruct_dz(run_dir, a.tag, a.match_dir, a.seed, a.holdout, y_true)
 
-    mid_km, _ = layer_mid_heights(d)
+    mid_km, _, band_src = layer_mid_heights(d)
+    print(f"[BANDS] 分带高度口径: {band_src}")
     bands = band_of(mid_km)
     rows = per_layer_table(y_true, y_pred, mid_km, bands)
     bands_stat = band_table(rows)
@@ -442,6 +451,7 @@ def main() -> int:
             cfg_snap = json.load(fh).get("config")
 
     out = {"name": name, "tag": a.tag, "run_dir": str(run_dir), "n_test": int(y_true.shape[0]),
+           "band_source": band_src,
            "global": glob, "bands": bands_stat, "per_layer": rows, "od": od_m, "gcf": gcf_m,
            "config": cfg_snap, "ee_footnote": EE_FOOTNOTE,
            "note_dz": "legacy npz: dz 由同 seed 重放留出索引重算,y_true 校验通过" if "dz_km" not in d else None}

@@ -139,6 +139,24 @@ CONFIG = {
     "DATENUM_BASE": 730486.5,           # datenum('2000-01-01 12:00:00')
 
     "N_ALT": 1291,
+
+    # ---- 垂直坐标(--vertical)----
+    #   asl = 历史口径:段边界 = 固定气压层位势高度 [min(surf,H0), H0..H31](高原近地面无层可用)
+    #   agl = 地形跟随:段边界 = dem_m + AGL_EDGES_KM,每样本"离地高度"分段 —— 高原/盆地近地面
+    #         获得 L00;T/RH 段特征由"地表以上气压层"剖面插值,低于最低有效层的薄段用最低两层
+    #         局地递减率外推 + 限幅(AGL_EXTRAP_*)。agl 模式同时修复 ACDL DEM 字段 km→m 单位 bug。
+    "VERTICAL": "asl",
+    # AGL 边界(离地高度,km),33 个边界 = 32 段;低层加密、高层渐疏,顶 = 30 km(ACDL 最高 bin)。
+    # 顶部压缩:dem_m > (30km − AGL_TOP) 时,高于 AGL_TOP_SPLIT 的边界线性压入 [TOP_SPLIT, 30km−dem]。
+    "AGL_EDGES_KM": (0.0, 0.05, 0.15, 0.35, 0.60, 0.90, 1.25, 1.65, 2.10, 2.60, 3.15,
+                     3.75, 4.40, 5.10, 5.85, 6.65, 7.50, 8.40, 9.35, 10.35, 11.40, 12.50,
+                     13.65, 14.85, 16.10, 17.40, 18.75, 20.15, 21.60, 23.10, 24.65,
+                     27.90, 30.00),
+    "AGL_TOP_SPLIT_KM": 12.0,           # 低于此 AGL 的边界永不压缩(保住近地面分辨率)
+    "ALT_MAX_M": 30000.0,               # ACDL Altitude 上限(km→m 后),AGL 顶部硬帽
+    "AGL_EXTRAP_MAX_DT_M": 0.010,       # 外推温度递减率限幅(K/m,即 10 K/km)
+    "AGL_EXTRAP_MAX_DRH_M": 0.02,       # 外推 RH 变化率限幅(%/m,即 2 %/100m)
+    "AGL_T_MIN_K": 175.0,               # 外推温度下限(防失控)
 }
 
 
@@ -560,6 +578,55 @@ def seg_bounds(surf_h: float, H: np.ndarray) -> np.ndarray:
     return np.concatenate([[min(surf_h, H[0])], H])
 
 
+# ---- AGL(离地高度)分段:--vertical agl 时使用 ----
+def agl_edges_m(dem_m: float) -> np.ndarray:
+    """由地表海拔把 AGL 边界表(km)换算成实际 ASL 边界(m),33 个 → 32 段。
+
+    顶部压缩:dem 较高时,AGL_TOP_SPLIT 以上的边界线性压入 [TOP_SPLIT, ALT_MAX−dem],
+    使最高段顶 ≤ ACDL 高度上限;TOP_SPLIT 以下(近地面)边界永不压缩。
+    返回严格递增的边界(m),edges[0] = dem_m(段 0 = 地表起)。
+    """
+    e = np.asarray(CONFIG["AGL_EDGES_KM"], dtype=np.float64) * 1000.0
+    assert e.size == 33 and np.all(np.diff(e) > 0), "AGL_EDGES_KM 必须是 33 个严格递增边界(32 段)"
+    top_room = CONFIG["ALT_MAX_M"] - dem_m                     # 地表以上还有多少空间
+    split = CONFIG["AGL_TOP_SPLIT_KM"] * 1000.0
+    out = e.copy()
+    if top_room < e[-1]:
+        f = max(top_room - split, 100.0) / max(e[-1] - split, 100.0)
+        hi = e > split
+        out[hi] = split + (e[hi] - split) * f
+    out[0] = 0.0
+    edges = dem_m + np.maximum.accumulate(out)                 # 强制单调(dem+边界)
+    edges[0] = dem_m
+    return edges
+
+
+def profile_at_height(H_lev: np.ndarray, T_lev: np.ndarray, RH_lev: np.ndarray,
+                      h_target: float) -> tuple[float, float]:
+    """在高度 h_target(m) 处取 (T, RH):地表以上气压层剖面插值;低于最低有效层时
+    用最低两层局地递减率外推 + 限幅(《优化路线讨论.md》AGL 设计)。
+
+    H_lev/T_lev/RH_lev: 仅含 z > dem 的有效层(调用方过滤)。返回有限值。
+    """
+    ok = np.isfinite(H_lev) & np.isfinite(T_lev) & np.isfinite(RH_lev)
+    z, t, r = H_lev[ok], T_lev[ok], RH_lev[ok]
+    if z.size == 0:                                            # 极端:全无效 → 中性回退
+        return 273.15, 50.0
+    if z.size == 1 or h_target >= z[0]:
+        h_t = float(np.interp(h_target, z, t))
+        h_r = float(np.interp(h_target, z, r))
+    else:
+        # 递减率外推(用最低两个有效层),限幅防失控
+        dz = z[1] - z[0]
+        dt = (t[1] - t[0]) / dz
+        dr = (r[1] - r[0]) / dz
+        dt = np.clip(dt, -CONFIG["AGL_EXTRAP_MAX_DT_M"], CONFIG["AGL_EXTRAP_MAX_DT_M"])
+        dr = np.clip(dr, -CONFIG["AGL_EXTRAP_MAX_DRH_M"], CONFIG["AGL_EXTRAP_MAX_DRH_M"])
+        h_t = float(t[0] + dt * (h_target - z[0]))
+        h_r = float(r[0] + dr * (h_target - z[0]))
+    return (max(h_t, CONFIG["AGL_T_MIN_K"]), float(np.clip(h_r, 0.0, 100.0)))
+
+
 def segment_index(alt_m: np.ndarray, bounds: np.ndarray) -> np.ndarray:
     """每个 bin 所属段号(L00..);越界 = -1。一次 searchsorted。"""
     sid = (np.searchsorted(bounds, alt_m, side="right") - 1).astype(np.int16)
@@ -673,13 +740,17 @@ def classify_thick_cloud(cloud, subtype, alt_m, cod):
 # 输出
 # ============================================================
 def build_column_names(n_level: int, output_stats: bool | None = None,
-                       super_levels: tuple[str, ...] | None = None) -> list[str]:
-    """列序:标识 → 训练特征(ERA5 廓线) → 训练目标(ACDL 消光)[→ 统计/QC][→ 单层列]。
+                       super_levels: tuple[str, ...] | None = None,
+                       vertical: str | None = None) -> list[str]:
+    """列序:标识 → 训练特征(ERA5 廓线) → 训练目标(ACDL 消光)[→ 统计/QC][→ 单层列][→ DEM_m]。
 
     output_stats=False(lite,默认);super_levels 为要并入的单层量(blh/tcwv/zsfc)。
+    vertical="agl" 时在末尾追加 DEM_m(逐组地表海拔,训练端 dz/GCF 用)。
     """
     if output_stats is None:
         output_stats = bool(CONFIG.get("OUTPUT_STATS", False))
+    if vertical is None:
+        vertical = str(CONFIG.get("VERTICAL", "asl"))
     n_seg = n_level                         # 32 段(段0=底部)
     # 1) 标识
     names = ["ERA5_Lon", "ERA5_Lat", "ERA5_Time", "Hour"]
@@ -701,6 +772,8 @@ def build_column_names(n_level: int, output_stats: bool | None = None,
     for v in super_levels:
         if v in SUPER_LEVEL_DEFS:
             names.append(SUPER_LEVEL_DEFS[v][1])          # BLH_m / TCWV_kgm2 / Z_sfc_m
+    if vertical == "agl":
+        names.append("DEM_m")
     return names
 
 
@@ -798,10 +871,15 @@ def run(start: str, end: str, dry_run: bool, skip_existing: bool = False) -> int
               f" → 保留 {int(in_win.sum())}/{N} 条")
 
         out_stats = bool(CONFIG.get("OUTPUT_STATS", False))
+        vertical_agl = str(CONFIG.get("VERTICAL", "asl")) == "agl"
+        if vertical_agl:
+            print(f"    [VERTICAL] agl(地形跟随):{len(CONFIG['AGL_EDGES_KM'])} 边界 → "
+                  f"{len(CONFIG['AGL_EDGES_KM'])-1} 段;DEM 字段 km→m 修复启用")
         if sl is not None and sl.vars:
             sl.prefetch([ti for (_, ti) in groups.keys()])
         sl_vars = tuple(sl.vars) if sl is not None else ()
-        names = build_column_names(n_seg, out_stats, super_levels=sl_vars)
+        names = build_column_names(n_seg, out_stats, super_levels=sl_vars,
+                                   vertical="agl" if vertical_agl else "asl")
         rows = []
         _t_agg0 = time.perf_counter()
         for (nd, ti), idxs in sorted(groups.items()):
@@ -811,6 +889,8 @@ def run(start: str, end: str, dry_run: bool, skip_existing: bool = False) -> int
             phase = acdl["phase"][idxs] if acdl.get("phase") is not None else None
             cod = acdl["cod"][idxs]                        # (n,)
             dem = acdl["dem"][idxs]
+            if vertical_agl:
+                dem = dem * 1000.0                    # ACDL DEM 字段实为 km(实证:天山处读数 1.6);agl 模式修正
             n_raw = len(idxs)
 
             # ---- 逐 bin QC 掩膜(CAD + 云类型;已向量化)----
@@ -863,10 +943,27 @@ def run(start: str, end: str, dry_run: bool, skip_existing: bool = False) -> int
             z = era5.column("z", ti, nd, ncol)
             t = era5.column("t", ti, nd, ncol)
             rh = era5.column("r", ti, nd, ncol)
-            H = level_heights(z)
+            H_lev_raw = level_heights(z)                   # 气压层位势高度(asl=段顶;agl=插值源剖面)
+            H = H_lev_raw
             if not np.isfinite(surf_h):
                 surf_h = H[0]                              # 兜底:最低层高度(底部段为空)
-            bounds = seg_bounds(surf_h, H)
+            if vertical_agl:
+                # ---- AGL:边界 = dem_m + AGL 边界表(地形跟随);段特征 = 段顶处剖面插值 ----
+                bounds = agl_edges_m(surf_h)               # 段 0 = [dem, dem+e1],恒非空
+                H = bounds[1:]                             # 段顶 ASL(训练端 dz 恒 >0)
+                ok_lev = (np.isfinite(H_lev_raw) & np.isfinite(np.asarray(t))
+                          & np.isfinite(np.asarray(rh)) & (H_lev_raw > surf_h))
+                z_v = H_lev_raw[ok_lev]                    # 注意:插值用高度(m),不是原始位势
+                t_v = np.asarray(t)[ok_lev]
+                r_v = np.asarray(rh)[ok_lev]
+                t_seg = np.empty(n_seg); rh_seg = np.empty(n_seg)
+                for k in range(n_seg):
+                    t_seg[k], rh_seg[k] = profile_at_height(z_v, t_v, r_v, H[k])
+                t, rh = t_seg, rh_seg
+                if z_v.size == 0:
+                    t[:] = np.nan; rh[:] = np.nan          # 该组 ERA5 剖面全无效 → 全 NaN(极端)
+            else:
+                bounds = seg_bounds(surf_h, H)             # 历史口径(固定气压层),不改动
 
             sid = segment_index(alt_m, bounds)             # 一次性求段号
             me, vc, tcnt = aggregate_segments(mean_sel, sid, n_seg)
@@ -878,6 +975,8 @@ def run(start: str, end: str, dry_run: bool, skip_existing: bool = False) -> int
             if sl_vars:
                 row_vals.append(np.array([sl.value(v, ti, r, c) for v in sl_vars],
                                          dtype=np.float64))
+            if vertical_agl:
+                row_vals.append(np.array([surf_h], dtype=np.float64))   # DEM_m:组均值地表海拔(已 km→m)
             if out_stats:
                 cloud_bins = count_segments(cloud_kept & above_surf, sid, n_seg)
                 below_cloud_bins = count_segments(below_cloud_kept & above_surf, sid, n_seg)
@@ -942,9 +1041,18 @@ def run(start: str, end: str, dry_run: bool, skip_existing: bool = False) -> int
                                 + ((" | " + " | ".join(super_cols)) if n_super else "")),
                 "DEMSource": "ACDL DEM_Surface_Elevation (fallback=H0)",
                 "ERA5Source": "era5_pressure_levels/0.25deg (z/g0, no integration)",
+                "Vertical": ("agl" if vertical_agl else "asl"),
+                "VerticalNote": ("terrain-following: bounds = DEM_m + AGL_EDGES_KM, "
+                                 "T/RH = profile interp at segment top, below-lowest-level "
+                                 "extrapolated with clamped lapse") if vertical_agl else "fixed pressure levels",
+                "AGLEdgesKm": (list(CONFIG["AGL_EDGES_KM"]) if vertical_agl else None),
+                "DemUnitsFix": ("km->m applied (ACDL DEM field is km; verified Tianshan ~1.6)"
+                                if vertical_agl else "not applied (asl keeps legacy behavior)"),
             }
             write_day(out_dir / f"ACDL_ERA5_MatchV2_{yyyymmdd}.mat", data,
-                      era5.level, names, CONFIG["OUT_STRUCT"], meta)
+                      (np.asarray(CONFIG["AGL_EDGES_KM"][1:], dtype=np.float32)   # agl:Level=段顶离地高度(km)
+                       if vertical_agl else era5.level),
+                      names, CONFIG["OUT_STRUCT"], meta)
         else:
             print(f"    [DRY] 将写 {data.shape[0]} 行 × {data.shape[1]} 列")
 
@@ -1012,6 +1120,33 @@ def selftest() -> int:
     m1 = vb & aer & ~bc & ~bs
     m2 = vb & aer & ~bs
     assert not m1[0, 4] and m2[0, 4]
+
+    # ---- AGL 分段(--vertical agl 核心)----
+    dem_pl, dem_hi = 30.0, 3000.0
+    e0, e3 = agl_edges_m(dem_pl), agl_edges_m(dem_hi)
+    assert e0.size == 33 and e3.size == 33 and e0[0] == dem_pl and e3[0] == dem_hi
+    assert np.all(np.diff(e0) > 0) and np.all(np.diff(e3) > 0)
+    assert e3[-1] <= CONFIG["ALT_MAX_M"] + 1e-6, f"顶部必须 ≤ ACDL 上限: {e3[-1]}"
+    # 零海拔不压缩:AGL 边界 == 名义表;高原 TOP_SPLIT 以下不压缩
+    nom = np.asarray(CONFIG["AGL_EDGES_KM"]) * 1000.0
+    e_zero = agl_edges_m(0.0)
+    assert np.allclose(e_zero, nom, atol=1e-6), "零海拔 AGL 边界应等于名义表"
+    i_split = int(np.flatnonzero(nom > CONFIG["AGL_TOP_SPLIT_KM"] * 1000.0)[0]) - 1
+    assert abs((e3[i_split] - dem_hi) - nom[i_split]) < 1e-6, "TOP_SPLIT 以下边界不应被压缩"
+    # 3km 高原:近地面 bin 落进 L00(asl 口径下这是 NaN)
+    alt_t = np.array([3020.0, 3060.0, 3200.0, 5000.0, 9000.0])   # AGL 20/60/200/2000/6000 m
+    sid_t = segment_index(alt_t, e3)
+    assert sid_t[0] == 0, "AGL 0-50m 段应有 bin(asl 口径下这是 NaN)"
+    assert sid_t[1] == 1 and sid_t[2] == 2 and sid_t[3] > sid_t[2], "bin 归段应正确且单调"
+    # 剖面插值 + 限幅外推
+    H_lev = np.array([3100.0, 3600.0, 4400.0])
+    T_lev = np.array([270.0, 265.0, 260.0]); RH_lev = np.array([30.0, 35.0, 40.0])
+    tt, rr = profile_at_height(H_lev, T_lev, RH_lev, 3150.0)     # 层间 → 插值
+    assert abs(tt - 269.5) < 1e-9 and abs(rr - 30.5) < 1e-9
+    tt2, rr2 = profile_at_height(H_lev, T_lev, RH_lev, 3050.0)   # 低于最低层 50m → 限幅外推
+    assert abs(tt2 - 270.5) < 1e-9 and abs(rr2 - 29.5) < 1e-9
+    tt3, rr3 = profile_at_height(H_lev[:1], T_lev[:1], RH_lev[:1], 3000.0)  # 单层 → 常值保持
+    assert abs(tt3 - 270.0) < 1e-9 and abs(rr3 - 30.0) < 1e-9
     print("[SELFTEST] PASS")
     return 0
 
@@ -1031,6 +1166,9 @@ if __name__ == "__main__":
                     help="跳过已存在的输出文件(断点续跑)")
     ap.add_argument("--with-stats", action="store_true",
                     help="输出完整 264 列(含测试用统计/QC 列);默认 lite 132 列")
+    ap.add_argument("--vertical", choices=("asl", "agl"), default=CONFIG["VERTICAL"],
+                    help="垂直坐标: asl=固定气压层段(历史口径,默认) / "
+                         "agl=地形跟随离地高度段(近地面全域可用;同时修复 DEM km→m 并追加 DEM_m 列)")
     ap.add_argument("--no-cache", action="store_true", help="不使用日级缓存(强制解析 .mat)")
     ap.add_argument("--super-levels", default=None,
                     help="要并入的单层量(逗号分隔:blh,tcwv,zsfc);默认取 CONFIG;传 \"\" 关闭")
@@ -1046,6 +1184,7 @@ if __name__ == "__main__":
         CONFIG["OUTPUT_STATS"] = True
     if a.no_cache:
         CONFIG["USE_CACHE"] = False
+    CONFIG["VERTICAL"] = a.vertical
     if a.no_super_levels:
         CONFIG["SUPER_LEVELS"] = ()
     elif a.super_levels is not None:
