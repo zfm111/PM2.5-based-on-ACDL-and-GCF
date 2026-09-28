@@ -197,6 +197,8 @@ def _plt():
         import matplotlib
         matplotlib.use("Agg")
         import matplotlib.pyplot as plt
+        from acdl_plotting import setup_cjk
+        setup_cjk()
         return plt
     except Exception as exc:
         print(f"  (跳过绘图: {exc})")

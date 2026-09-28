@@ -24,12 +24,24 @@ import numpy as np
 # ============================================================
 # 公共小工具
 # ============================================================
+def setup_cjk():
+    """中文字体设置(防豆腐框):Windows 首选微软雅黑,再试黑体/Noto/思源;负号用 ASCII。"""
+    import matplotlib
+    matplotlib.rcParams["font.sans-serif"] = [
+        "Microsoft YaHei", "SimHei", "Noto Sans CJK SC", "Source Han Sans SC",
+        "PingFang SC", "WenQuanYi Micro Hei", "DejaVu Sans",
+    ]
+    matplotlib.rcParams["font.family"] = "sans-serif"
+    matplotlib.rcParams["axes.unicode_minus"] = False
+
+
 def _plt():
     """惰性导入 matplotlib(无头模式);失败返回 None。"""
     try:
         import matplotlib
         matplotlib.use("Agg")
         import matplotlib.pyplot as plt
+        setup_cjk()
         return plt
     except Exception as exc:
         print(f"  (跳过绘图: {exc})")
