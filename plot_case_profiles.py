@@ -54,7 +54,27 @@ def main() -> int:
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
     setup_cjk()
+    # ---- 出版级样式(纯呈现,不改数据) ----
+    plt.rcParams.update({
+        "font.size": 11, "axes.labelsize": 11, "axes.titlesize": 11,
+        "xtick.labelsize": 9, "ytick.labelsize": 9, "legend.fontsize": 9,
+        "axes.linewidth": 0.8, "axes.spines.top": False, "axes.spines.right": False,
+        "grid.alpha": 0.25, "grid.linestyle": "--", "grid.linewidth": 0.5,
+        "legend.frameon": False, "lines.solid_capstyle": "round",
+    })
+    C_OBS, C_PRD = "#0C5DA5", "#C44E52"                        # 色盲友好深蓝/砖红
     OUT.mkdir(parents=True, exist_ok=True)
+
+    def _style(ax):
+        ax.grid(True, which="major")
+        ax.tick_params(direction="out", length=3)
+
+    def _pair_stats(o, p, z):
+        m = np.isfinite(o) & np.isfinite(p)
+        if m.sum() < 3 or np.std(o[m]) < 1e-12:
+            return None, int(m.sum())
+        r = float(np.corrcoef(o[m], p[m])[0, 1])
+        return r, int(m.sum())
 
     Xa, ya, dema, n_te = test_rows(AGL_DIR)
     npz_a = np.load(Path("结果汇总/runs/train_agl_b0/results/predictions_Holdout_AGLB0.npz"))
@@ -82,22 +102,30 @@ def main() -> int:
     for ax, (label, m, how) in zip(axes.ravel(), dem_band_cases):
         idx_pool = np.flatnonzero(m & np.isfinite(od_a))
         if idx_pool.size == 0:
-            ax.set_title(f"{label}(无样本)"); ax.grid(alpha=0.3); continue
+            ax.set_title(f"{label}(无样本)"); _style(ax); continue
         pick = idx_pool[np.argmax(od_a[idx_pool])] if how == "max" else idx_pool[np.argmin(od_a[idx_pool])]
         z = agl_a[pick]
         o, p = ya[pick], npz_a["y_pred"][pick]
-        ax.plot(o, z, "-o", ms=3.5, lw=1.8, color="#1f77b4", label="ACDL 观测")
-        ax.plot(p, z, "-s", ms=3.0, lw=1.6, color="#d62728", mfc="none", label="B0-AGL 预测")
+        r, npair = _pair_stats(o, p, z)
+        hi = max(np.nanmax(o[np.isfinite(o)]), np.nanmax(p[np.isfinite(p)]))
+        ax.plot(o, z, "-o", ms=3.5, lw=1.9, color=C_OBS, label="ACDL 观测", zorder=3)
+        ax.plot(p, z, "-s", ms=3.2, lw=1.7, color=C_PRD, mfc="none", label="B0-AGL 预测", zorder=2)
+        ax.set_xlim(0, hi * 1.12)
         ax.set_xlabel(r"消光系数 $\sigma$ (km$^{-1}$)")
-        ax.set_title(f"{label}  (DEM≈{dema[pick]:.0f} m, OD≈{od_a[pick]:.2f})", fontsize=10)
-        ax.grid(alpha=0.3); ax.legend(fontsize=8, loc="lower right")
+        ax.set_title(f"{label}", fontsize=11)
+        ax.text(0.97, 0.97, f"DEM≈{dema[pick]:.0f} m\nOD≈{od_a[pick]:.2f}\n"
+                            + (f"r = {r:.2f}(n={npair}层)" if r is not None else ""),
+                transform=ax.transAxes, ha="right", va="top", fontsize=9,
+                bbox=dict(boxstyle="round,pad=0.35", fc="white", ec="0.75", alpha=0.85))
+        _style(ax)
+        ax.legend(loc="lower right", fontsize=8.5)
         ax.set_ylim(0, 12)
     axes[0, 0].set_ylabel("离地高度 (km)"); axes[1, 0].set_ylabel("离地高度 (km)")
-    fig.suptitle("留出集个例:ACDL 观测 vs B0-AGL 预测消光廓线(y=离地高度;个例按地形带柱含量挑选)", fontsize=12)
+    fig.suptitle("留出集个例:ACDL 观测 vs B0-AGL 预测消光廓线(y=离地高度;每带挑柱含量最大的沙尘型个例)", fontsize=12)
     fig.tight_layout()
-    p1 = OUT / "agl_case_profiles.png"
-    fig.savefig(p1, dpi=200); plt.close(fig)
-    print(f"  图: {p1}")
+    p1 = OUT / "agl_case_profiles"
+    fig.savefig(p1.with_suffix(".png"), dpi=300); plt.close(fig)
+    print(f"  图: {p1.with_suffix('.png')}")
 
     # ---- 图 2:高原/盆地个例 ASL vs AGL 预测(y=海拔) ----
     fig, axes = plt.subplots(1, 2, figsize=(10.6, 6.4), sharey=True)
@@ -108,24 +136,33 @@ def main() -> int:
         z_asl = asl_s[pick]; z_agl = agl_a[pick]
         o = ya[pick]
         o_s = npz_s["y_true"][pick]
-        ax.plot(o_s, z_asl, "-o", ms=3.5, lw=1.8, color="#1f77b4", label="ACDL 观测")
-        ax.plot(npz_s["y_pred"][pick], z_asl, "-s", ms=3.0, lw=1.5, color="0.45",
-                mfc="none", label="B0-ASL 预测(固定气压层)")
-        ax.plot(npz_a["y_pred"][pick], dema[pick] / 1000.0 + z_agl, "-s", ms=3.0, lw=1.6,
-                color="#d62728", mfc="none", label="B0-AGL 预测(地形跟随)")
-        ax.axhline(dema[pick] / 1000.0, color="k", ls=":", lw=1.0)
+        pa, ps = npz_a["y_pred"][pick], npz_s["y_pred"][pick]
+        r_a, _ = _pair_stats(o, pa, z_agl)
+        hi = np.nanmax(np.concatenate([o_s[np.isfinite(o_s)], ps[np.isfinite(ps)],
+                                       pa[np.isfinite(pa)]]))
+        ax.plot(o_s, z_asl, "-o", ms=3.5, lw=1.9, color=C_OBS, label="ACDL 观测", zorder=3)
+        ax.plot(ps, z_asl, "-s", ms=3.0, lw=1.5, color="0.45", mfc="none",
+                label="B0-ASL 预测(固定气压层)", zorder=2)
+        ax.plot(pa, dema[pick] / 1000.0 + z_agl, "-s", ms=3.2, lw=1.7,
+                color=C_PRD, mfc="none", label="B0-AGL 预测(地形跟随)", zorder=3)
+        ax.axhline(dema[pick] / 1000.0, color="k", ls=":", lw=1.1)
         ax.text(0.02, dema[pick] / 1000.0 + 0.15, f"地表 DEM≈{dema[pick]:.0f} m",
-                fontsize=8, transform=ax.get_yaxis_transform())
+                fontsize=8.5, transform=ax.get_yaxis_transform())
+        ax.set_xlim(0, hi * 1.12)
         ax.set_xlabel(r"消光系数 $\sigma$ (km$^{-1}$)")
-        ax.set_title(f"{label}  (OD≈{od_a[pick]:.2f})", fontsize=10)
-        ax.grid(alpha=0.3); ax.legend(fontsize=8, loc="lower right")
+        ax.set_title(label, fontsize=11)
+        ax.text(0.97, 0.97, f"OD≈{od_a[pick]:.2f}" + (f"\nAGL 廓线 r = {r_a:.2f}" if r_a is not None else ""),
+                transform=ax.transAxes, ha="right", va="top", fontsize=9,
+                bbox=dict(boxstyle="round,pad=0.35", fc="white", ec="0.75", alpha=0.85))
+        _style(ax)
+        ax.legend(loc="lower right", fontsize=8.5)
         ax.set_ylim(0, zmax)
     axes[0].set_ylabel("海拔 (km)")
-    fig.suptitle("同一沙尘型个例(y=海拔):ASL 口径高原近地面无观测层(蓝线自 DEM 起且地下段为无监督外推) vs AGL 补齐贴地层", fontsize=11)
+    fig.suptitle("同一沙尘型个例(y=海拔):ASL 口径高原近地面无观测层(蓝线自 DEM 起,地下为无监督外推) vs AGL 补齐贴地层", fontsize=11)
     fig.tight_layout()
-    p2 = OUT / "agl_vs_asl_plateau.png"
-    fig.savefig(p2, dpi=200); plt.close(fig)
-    print(f"  图: {p2}")
+    p2 = OUT / "agl_vs_asl_plateau"
+    fig.savefig(p2.with_suffix(".png"), dpi=300); plt.close(fig)
+    print(f"  图: {p2.with_suffix('.png')}")
     return 0
 
 
