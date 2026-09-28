@@ -309,6 +309,79 @@ def plot_per_layer(rows, out_base):
 
 
 # ============================================================
+# 自动 md 图文报告(嵌图 + 逐图解释 + 指标速查)
+# ============================================================
+def write_bench_md(run_dir: Path, name: str, tag: str, out: dict,
+                   bands_stat: list, cfg_snap: dict | None) -> Path:
+    """生成 <run-dir>/results/bench_<name>.md:嵌 3 张图(相对路径)、逐图解释、分带表、指标速查链接。"""
+    import time
+    res_dir = run_dir / "results"
+    fig_rel = lambda fname: Path("../plots") / fname          # md 在 results/ 下,图在 ../plots/
+    od, gcf, glob = out["od"], out["gcf"], out["global"]
+    low = next((b for b in bands_stat if b["band"] == "0-1km"), None)
+    low3 = [b for b in bands_stat if b["band"] in ("0-1km", "1-3km", "3-5km")]
+    lo5 = float(np.mean([b["MAE"] for b in low3])) if low3 else float("nan")
+    cfg_line = ("旧运行(无配置快照)" if not cfg_snap else
+                f"target={cfg_snap.get('TARGET')}  w_profile={cfg_snap.get('W_PROFILE')}  "
+                f"log_target={cfg_snap.get('LOG_TARGET')}  softplus={cfg_snap.get('SOFTPLUS')}  "
+                f"tag={cfg_snap.get('exp_tag')}")
+    md = f"""# 评估台报告 — {name}
+
+- 运行目录:`{run_dir}` | 标签:`{tag}` | N_test = {out['n_test']:,} | 生成于 {time.strftime('%Y-%m-%d %H:%M')}
+- 配置:{cfg_line}
+- 指标定义与计算方式:[指标说明](../../指标说明.md)(MAE/nMAE/MB/slope/OD/Gfrac EE/log10 比值/分带规则)
+
+## 一句话结论
+
+> **低层(0–5km 三带平均) MAE = {lo5:.4f} km⁻¹(0–1km 带 {low['MAE']:.4f},nMAE {low['nMAE']*100:.1f}%,
+> n={low['n_obs']:,});柱含量 OD 相对误差 bias = {od['bias_rel_mean']*100:+.1f}%,|rel| MAE = {od['mae_rel']*100:.1f}%,
+> Gfrac(EE) = {od['Gfrac_EE']*100:.1f}%({'达标 ≥66%' if od['Gfrac_EE_pass'] else '未达 66% 满意线'});
+> OD slope = {od['slope']:.3f} / intercept = {od['intercept']:.4f};GCF(n={gcf.get('n')}) R² = {gcf.get('R2', float('nan')):.3f},
+> MAE = {gcf.get('MAE', float('nan')):.4f}。全局 R² = {glob['R2']:.4f}(附图口径)。**
+
+## 图 1|柱含量 OD 散点 + EE 包络
+
+![OD scatter]({fig_rel(f'bench_od_scatter_{name}.png')})
+
+**看什么**:点云贴 1:1 虚线的程度 = 柱含量保真能力;红线为 EE 包络 ±(0.05+0.15×AOD)(550nm 形式用于 532nm),
+包络内比例 Gfrac = **{od['Gfrac_EE']*100:.1f}%**{'' if od['Gfrac_EE_pass'] else '(低于 66% 满意线)'}。
+slope = {od['slope']:.3f} < 1 且 intercept = {od['intercept']:.4f} > 0 → 干净样本略抬、污染样本压扁(动态范围压缩);
+bias = {od['bias_rel_mean']*100:+.1f}% 说明总量{'基本无偏' if abs(od['bias_rel_mean']) < 0.03 else '存在系统性偏移'}。
+
+## 图 2|廓线分位带 + 对数差值曲线
+
+![profile]({fig_rel(f'bench_profile_{name}.png')})
+
+**看什么**:左栏蓝/红 = 观测/预测的逐层中位数与 25–75 分位带(同批样本同掩膜配对)——
+红带比蓝带"瘦"即动态范围压缩;右栏 log10(σ̂/σ) 中位线在 0 上下 = 典型样本无系统偏差,
+若中位线偏正而均值偏置为负,则是**高消光尾部被低估**的形态(基线 B0 低层即如此)。
+
+## 图 3|逐层 nMAE / MB / slope / R² 四联
+
+![per layer]({fig_rel(f'bench_per_layer_{name}.png')})
+
+**看什么**(自左至右):nMAE 跨层可比的主指标;MB 带符号偏置(偏离 0 的方向 = 总量型误差);
+slope 相对 1 的偏离 = 压缩程度(此栏是基线病灶最直观的面板);R² 仅附图(分母为观测方差,跨层不可比)。
+红圈层有效样本 <500,数字慎读。
+
+## 分层带表
+
+| 带 | 层均样本 n_obs | MAE (km⁻¹) | nMAE | MB | slope |
+|----|--------------|-----------|------|-----|-------|
+""" + "\n".join(
+        f"| {b['band']} | {b.get('n_obs', 0):,} | {b.get('MAE', float('nan')):.4f} | "
+        f"{b.get('nMAE', float('nan'))*100:.1f}% | {b.get('MB', float('nan')):+.4f} | "
+        f"{b.get('slope', float('nan')):.3f} |" for b in bands_stat if "MAE" in b) + f"""
+
+> 机器可读明细:`bench_{name}.json`(含逐层 32 行)/ `bench_{name}.csv`。
+"""
+    p = res_dir / f"bench_{name}.md"
+    p.write_text(md, encoding="utf-8")
+    print(f"  md: {p}")
+    return p
+
+
+# ============================================================
 # 主流程
 # ============================================================
 def main() -> int:
@@ -319,6 +392,7 @@ def main() -> int:
     ap.add_argument("--match-dir", default=None, help="旧 npz 无 dz 时重载数据补算用")
     ap.add_argument("--seed", type=int, default=42)
     ap.add_argument("--holdout", type=float, default=0.2)
+    ap.add_argument("--no-md", action="store_true", help="不生成 bench_<name>.md 图文报告")
     a = ap.parse_args()
 
     run_dir = Path(a.run_dir)
@@ -376,6 +450,10 @@ def main() -> int:
     plot_od_scatter(ot, op, plot_dir / f"bench_od_scatter_{name}", od_m)
     plot_profile(y_true, y_pred, mid_km, plot_dir / f"bench_profile_{name}")
     plot_per_layer(rows, plot_dir / f"bench_per_layer_{name}")
+
+    if not getattr(a, "no_md", False):
+        write_bench_md(run_dir, name, a.tag, out, bands_stat, cfg_snap)
+    return 0
 
     # ---- 一句话判据(Step 1 验收)----
     low = next(b for b in bands_stat if b["band"] == "0-1km")
