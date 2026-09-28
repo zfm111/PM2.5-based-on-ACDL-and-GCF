@@ -98,7 +98,7 @@ def main() -> int:
     zm = np.nanmean(agl_mid, axis=0)                             # 层中点(样本平均)
     N = y.shape[0]
 
-    fig, axes = plt.subplots(2, 2, figsize=(12.4, 9.6))
+    fig, axes = plt.subplots(2, 3, figsize=(17.4, 9.6))
 
     def _box(ax, s, extra=""):
         ax.text(0.97, 0.97, s + extra, transform=ax.transAxes, ha="right", va="top",
@@ -107,11 +107,18 @@ def main() -> int:
     # ---- (a) 全域平均 ----
     ax = axes[0, 0]
     mo, mp, ci, nk = layer_mean(y, p)
+    m_all = np.isfinite(y) & np.isfinite(p)
+    so = np.nanstd(np.where(m_all, y, np.nan), 0)      # 样本间标准差(大气变率+不可约误差)
+    sp = np.nanstd(np.where(m_all, p, np.nan), 0)
     s = stats(mo, mp, zm)
-    ax.fill_betweenx(zm, mo - ci, mo + ci, color=C_OBS, alpha=0.25, lw=0, label="观测均值 95%CI")
+    ax.fill_betweenx(zm, mo - so, mo + so, color="0.55", alpha=0.16, lw=0,
+                     label="观测样本 ±1σ(变率+误差)")
+    ax.fill_betweenx(zm, mp - sp, mp + sp, color=C_PRD, alpha=0.12, lw=0,
+                     label="预测样本 ±1σ")
+    ax.fill_betweenx(zm, mo - ci, mo + ci, color=C_OBS, alpha=0.30, lw=0, label="观测均值 95%CI")
     ax.plot(mo, zm, "-o", ms=3.5, lw=2.0, color=C_OBS, label="ACDL 观测(均值)")
     ax.plot(mp, zm, "-s", ms=3.2, lw=1.8, color=C_PRD, mfc="none", label="B0-AGL 预测(均值)")
-    ax.set_xlim(0, np.nanmax(mp) * 1.15)
+    ax.set_xlim(0, max(np.nanmax(mo + so), np.nanmax(mp + sp)) * 1.08)
     ax.set_xlabel(r"消光系数 $\sigma$ (km$^{-1}$)"); ax.set_ylabel("离地高度 (km)")
     ax.set_title(f"(a) 全域平均廓线(留出集 N={N:,})", fontsize=11)
     _box(ax, f"剖面 r = {s['r']:.3f}\nMAE = {s['mae']:.4f} km⁻¹\nbias = {s['bias']:+.4f}",
@@ -132,7 +139,7 @@ def main() -> int:
         picks.append((k, idx, float(np.nanmean(dem[idx]))))
         if len(picks) == 2:
             break
-    for ax, (k, idx, d_dem), tag in zip([axes[0, 1], axes[1, 0]], picks, ["(b)", "(c)"]):
+    for ax, (k, idx, d_dem), tag in zip([axes[0, 1], axes[0, 2]], picks, ["(b)", "(c)"]):
         mo, mp, sd, nk = layer_mean(y[idx], p[idx])
         m = np.isfinite(y[idx]) & np.isfinite(p[idx])
         sp = np.nanstd(np.where(m, p[idx], np.nan), 0)
@@ -146,10 +153,31 @@ def main() -> int:
         _box(ax, f"时次 n = {len(idx)}\nDEM ≈ {d_dem:.0f} m\n剖面 r = {s['r']:.3f}"
                  f"\nMAE = {s['mae']:.4f}\nbias = {s['bias']:+.4f}")
         ax.grid(True); ax.legend(loc="lower right")
-    axes[1, 0].set_xlabel(r"消光系数 $\sigma$ (km$^{-1}$)"); axes[1, 0].set_ylabel("离地高度 (km)")
-    axes[0, 1].set_xlabel(r"消光系数 $\sigma$ (km$^{-1}$)"); axes[0, 1].set_ylabel("离地高度 (km)")
+    for axx in (axes[0, 0], axes[0, 1], axes[0, 2]):
+        axx.set_xlabel(r"消光系数 $\sigma$ (km$^{-1}$)")
+    axes[0, 0].set_ylabel("离地高度 (km)"); axes[1, 0].set_ylabel("ACDL 观测 $\sigma$ (km$^{-1}$)")
 
-    # ---- (d) 分地形带平均偏差剖面 ----
+    # ---- (d) 全层密度散点:逐样本散度诚实呈现 + EE 包络 ----
+    ax = axes[1, 0]
+    o_all = y[m_all]; p_all = p[m_all]
+    hb = ax.hexbin(o_all, p_all, gridsize=55, bins="log", cmap="viridis", mincnt=1)
+    fig.colorbar(hb, ax=ax, label="样本数(log)", shrink=0.85)
+    hi = np.nanpercentile(np.concatenate([o_all, p_all]), 99.8) * 1.05
+    xs = np.linspace(0, hi, 100)
+    ax.plot(xs, xs, "k--", lw=1.1, label="1:1")
+    ax.plot(xs, xs + (0.05 + 0.15 * xs), "r-", lw=0.9, label="EE 包络")
+    ax.plot(xs, xs - (0.05 + 0.15 * xs), "r-", lw=0.9)
+    ee = float(np.mean(np.abs(p_all - o_all) <= 0.05 + 0.15 * o_all))
+    mae_lay = float(np.mean(np.abs(p_all - o_all)))
+    ax.set_xlim(0, hi); ax.set_ylim(0, hi)
+    ax.set_xlabel(r"ACDL 观测 $\sigma$ (km$^{-1}$)")
+    ax.set_title("(d) 全层逐样本密度散点(N="
+                 + f"{o_all.size:,} 对)", fontsize=11)
+    _box(ax, f"Gfrac(EE) = {ee*100:.1f}%\n|rel| MAE = {rel*100:.1f}%\n"
+             f"(逐样本散度:均值图不可见的部分)")
+    ax.grid(True); ax.legend(loc="lower right", fontsize=8.5)
+
+    # ---- (e) 分地形带平均偏差剖面 ----
     ax = axes[1, 1]
     bands = [(0, 120, "平原 <0.12km", "#0C5DA5"), (120, 900, "低山", "#2CA02C"),
              (900, 1800, "盆地", "#B8860B"), (1800, 2600, "高原过渡", "#FF7F0E"),
@@ -163,10 +191,25 @@ def main() -> int:
     ax.axvline(0, color="k", ls="--", lw=1.0)
     ax.set_xlabel(r"平均偏差  mean($\hat\sigma-\sigma$) (km$^{-1}$)")
     ax.set_ylabel("离地高度 (km)")
-    ax.set_title("(d) 分地形带平均偏差剖面(贴合度研判)", fontsize=11)
+    ax.set_title("(e) 分地形带平均偏差剖面(系统误差不因平均消失)", fontsize=11)
     ax.grid(True); ax.legend(loc="lower right", fontsize=8.5)
 
-    fig.suptitle("平均口径下的观测—预测一致性(B0-AGL 留出集;逐样本散度以 bench 指标为准)", fontsize=12.5)
+    ax = axes[1, 2]; ax.axis("off")
+    ax.text(0.02, 0.96,
+            "口径说明\n"
+            "────────────────\n"
+            "(a) 全域逐层平均:均值的 95%CI 随 √n 收窄,\n"
+            "    衡量垂直结构与量级的系统保真;\n"
+            "(b)(c) 5°×5° 区域全时间平均:区域气候尺度;\n"
+            "(d) 逐样本散度:±30min/25km 配对误差与\n"
+            "    不可预报的个例涨落都在这里,以 bench 为准;\n"
+            "(e) 平均不消除系统偏差(高原近地面 -0.04)。\n"
+            "────────────────\n"
+            "结论:均值贴合(r≈1)与逐样本散度(Gfrac 57%)\n"
+            "是同一模型的两个真实侧面,须同时呈现。",
+            transform=ax.transAxes, va="top", fontsize=10.5,
+            bbox=dict(boxstyle="round,pad=0.5", fc="0.96", ec="0.7"))
+    fig.suptitle("平均口径下的观测—预测一致性 + 逐样本散度对照(B0-AGL 留出集)", fontsize=12.5)
     fig.tight_layout()
     out = OUT / "profile_agreement_modes"
     fig.savefig(out.with_suffix(".png"), dpi=300)
