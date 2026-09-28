@@ -1,7 +1,7 @@
 # Step 1 · B0 基线快照报告（评估台首跑）
 
 - 数据：`train_fixed_case5_abs`（abs 目标，case5 匹配产物，34,860 样本，Holdout N=6,972，seed=42）
-- 产物：`train_fixed_case5_abs/results/bench_B0.json|csv` + `plots/bench_od_scatter_B0.png`、
+- 产物：`runs/train_fixed_case5_abs/results/bench_B0.json|csv` + `plots/bench_od_scatter_B0.png`、
   `bench_profile_B0.png`、`bench_per_layer_B0.png`
 - 旧 npz 无 dz：同 seed 重放留出索引补算，**y_true 校验通过**（数值全等）。
 

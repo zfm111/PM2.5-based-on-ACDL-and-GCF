@@ -313,10 +313,20 @@ def plot_per_layer(rows, out_base):
 # ============================================================
 def write_bench_md(run_dir: Path, name: str, tag: str, out: dict,
                    bands_stat: list, cfg_snap: dict | None) -> Path:
-    """生成 <run-dir>/results/bench_<name>.md:嵌 3 张图(相对路径)、逐图解释、分带表、指标速查链接。"""
+    """生成 <run-dir>/results/bench_<name>.md:嵌 3 张图(相对路径)、逐图解释、分带表、指标速查链接。
+
+    图与《指标说明.md》的相对链接按实际目录深度计算(运行目录无论在不在 结果汇总/runs/ 下都正确)。
+    """
+    import os
     import time
     res_dir = run_dir / "results"
-    fig_rel = lambda fname: Path("../plots") / fname          # md 在 results/ 下,图在 ../plots/
+    fig_rel = lambda fname: Path(os.path.relpath(run_dir / "plots" / fname, res_dir)).as_posix()
+    spec = None
+    for p in [res_dir.resolve(), *res_dir.resolve().parents]:
+        if (p / "指标说明.md").exists():
+            spec = p / "指标说明.md"
+            break
+    spec_rel = Path(os.path.relpath(spec, res_dir)).as_posix() if spec else "../../指标说明.md"
     od, gcf, glob = out["od"], out["gcf"], out["global"]
     low = next((b for b in bands_stat if b["band"] == "0-1km"), None)
     low3 = [b for b in bands_stat if b["band"] in ("0-1km", "1-3km", "3-5km")]
@@ -329,7 +339,7 @@ def write_bench_md(run_dir: Path, name: str, tag: str, out: dict,
 
 - 运行目录:`{run_dir}` | 标签:`{tag}` | N_test = {out['n_test']:,} | 生成于 {time.strftime('%Y-%m-%d %H:%M')}
 - 配置:{cfg_line}
-- 指标定义与计算方式:[指标说明](../../指标说明.md)(MAE/nMAE/MB/slope/OD/Gfrac EE/log10 比值/分带规则)
+- 指标定义与计算方式:[指标说明]({spec_rel})(MAE/nMAE/MB/slope/OD/Gfrac EE/log10 比值/分带规则)
 
 ## 一句话结论
 

@@ -1,7 +1,7 @@
 {
   "name": "B0",
   "tag": "Holdout",
-  "run_dir": "train_fixed_case5_abs",
+  "run_dir": "结果汇总\\runs\\train_fixed_case5_abs",
   "n_test": 6972,
   "global": {
     "R2": 0.49663035899468155,

@@ -21,9 +21,9 @@ diagnose_low_layers.py — 低层(L00-L05) Ext_mean 缺失成因定量诊断
 
 用法:
   python diagnose_low_layers.py                       # 默认 case4/case5 两目录
-产物:
-  figs/diag_lowlayers_decompose.png / diag_lowlayers_demband.png
-  低层缺失诊断.md(嵌图+结论) ;facts.md 由人工追加
+产物(统一写入 结果汇总/):
+  结果汇总/figures/diag_lowlayers_decompose.png / diag_lowlayers_demband.png (+json)
+  结果汇总/低层缺失诊断.md(嵌图+结论)
 ============================================================
 """
 from __future__ import annotations
@@ -44,6 +44,7 @@ import Train_ACDL_ERA5_MatchV2 as T2
 
 CASE5_DIR = "D:/matchdata_fixed_case5"
 CASE4_DIR = "D:/matchdata_fixed_case4"
+OUT_DIR = Path(__file__).resolve().parent / "结果汇总"
 DEM_BANDS = [(0, 120), (120, 370), (370, 650), (650, 1000), (1000, 1500), (1500, 2000), (2000, 6000)]
 DEM_BAND_NAMES = ["<120", "120-370", "370-650", "650-1000", "1000-1500", "1500-2000", ">2000"]
 N_SHOW = 12          # 诊断展示到 L11(低层段)
@@ -136,7 +137,7 @@ def main() -> int:
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
     setup_cjk()
-    figs = Path("figs"); figs.mkdir(exist_ok=True)
+    figs = OUT_DIR / "figures"; figs.mkdir(parents=True, exist_ok=True)
 
     # 图1:逐层成因堆叠
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12.5, 5.6), gridspec_kw={"width_ratios": [1.35, 1.0]})
@@ -192,7 +193,7 @@ def main() -> int:
 - 数据:D:/matchdata_fixed_case5(训练口径)与 D:/matchdata_fixed_case4(默认QC),同文件同索引,{nf5} 文件 / {n:,} 样本。
 - 结论速览:**低层缺失的主导机制是几何性的**——ERA5 气压层层高以海拔为基准,DEM 高于段顶时整段在地下,Ext 必为 NaN;云 QC(case4)贡献次之且可由 case 口径回收;其余为消光超界/CAD 不确定带/产品 NaN。
 
-![成因分解](figs/diag_lowlayers_decompose.png)
+![成因分解](figures/diag_lowlayers_decompose.png)
 
 **图1 怎么读**:左图每个条 = 该层样本的四类去向(自下而上 A 硬几何缺失 / B 其他QC缺失 / C 云QC可回收 / D 均有效,合计 100%)。
 L00–L02 的缺失条几乎全被红色(A 硬几何)占据;蓝色(C)是 case4 相对 case5 多丢的"云下"部分——换 case5 已回收,再往回换更松口径空间不大。
@@ -206,7 +207,7 @@ L00–L02 的缺失条几乎全被红色(A 硬几何)占据;蓝色(C)是 case4 �
         f"{dec[k]['C_cloud']/n*100:.1f}% | {dec[k]['D_valid']/n*100:.1f}% |"
         for k in range(N_SHOW)) + f"""
 
-![地形分带](figs/diag_lowlayers_demband.png)
+![地形分带](figures/diag_lowlayers_demband.png)
 
 **图2 怎么读**:横轴是样本的地表高度分带,纵轴是该带内各层的 Ext_mean 有效率。
 形态完全由几何决定:DEM 一旦超过某层层顶,该层有效率应声跳水(如 >2000 m 带内,L00–L07 几乎全灭,而 L08 以上仍高)。
@@ -236,9 +237,9 @@ L00–L02 的缺失条几乎全被红色(A 硬几何)占据;蓝色(C)是 case4 �
       不同,它作用于样本而不是层,且收益受 B 类规模限制。
 3. **不宜做**:用 ERA5 地下外推值"补"低层(把外推当真值);把 case1–4 的云规则进一步放松(会引入云污染真值)。
 """
-    with open("低层缺失诊断.md", "w", encoding="utf-8") as fh:
+    with open(OUT_DIR / "低层缺失诊断.md", "w", encoding="utf-8") as fh:
         fh.write(md)
-    with open("figs/diag_lowlayers_decompose.json", "w", encoding="utf-8") as fh:
+    with open(figs / "diag_lowlayers_decompose.json", "w", encoding="utf-8") as fh:
         json.dump({"n": n, "decompose": {f"L{k:02d}": v for k, v in dec.items()},
                    "dem_bands": dem_rows}, fh, ensure_ascii=False, indent=2)
     print(f"\n[OUT] 低层缺失诊断.md + {p1.name} + {p2.name} + json 已写入")

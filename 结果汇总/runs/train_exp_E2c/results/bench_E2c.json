@@ -1,7 +1,7 @@
 {
   "name": "E2c",
   "tag": "Holdout_E2c",
-  "run_dir": "train_exp_E2c",
+  "run_dir": "结果汇总\\runs\\train_exp_E2c",
   "n_test": 6972,
   "global": {
     "R2": 0.45522868356868296,

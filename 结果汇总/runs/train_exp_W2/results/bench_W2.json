@@ -1,7 +1,7 @@
 {
   "name": "W2",
   "tag": "Holdout_W2",
-  "run_dir": "train_exp_W2",
+  "run_dir": "结果汇总\\runs\\train_exp_W2",
   "n_test": 6972,
   "global": {
     "R2": 0.3940071431074349,

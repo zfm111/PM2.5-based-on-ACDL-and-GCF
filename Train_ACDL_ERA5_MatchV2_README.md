@@ -132,7 +132,7 @@ X = [ Lon, Lat, sin(hour), cos(hour), sp_x, sp_y, sp_z, H_k00..31, T_k00..31, RH
 
 ```bash
 # 本地(项目 .venv 已含 torch/sklearn);默认路径 D:/matchdata_fixed_case5(135 列,自带三列额外特征)
-./.venv/Scripts/python.exe Train_ACDL_ERA5_MatchV2.py --out-dir "./train_out"
+./.venv/Scripts/python.exe Train_ACDL_ERA5_MatchV2.py --out-dir "./结果汇总/runs/train_out"
 
 # 服务器(后台 + 日志)
 nohup python Train_ACDL_ERA5_MatchV2.py \

@@ -77,8 +77,8 @@ CONFIG = {
     # 想要 case4 的严格 QC 产物就改成 D:/matchdata_fixed_case4
     "MATCH_DIR": r"D:/matchdata_fixed_case5",
     "MATCH_GLOB": "ACDL_ERA5_MatchV2_*.mat",
-    # 结果目录:相对路径 → 落在**本工程目录**下(不要写到 D: 盘)
-    "OUT_DIR":   r"./train_out",
+    # 结果目录:相对路径 → 落在**本工程目录**下(不要写到 D: 盘);所有运行产物统一归 结果汇总/runs/
+    "OUT_DIR":   r"./结果汇总/runs/train_out",
     "STRUCT":    "MatchV2",
 
     # 列(0 基,lite 布局)

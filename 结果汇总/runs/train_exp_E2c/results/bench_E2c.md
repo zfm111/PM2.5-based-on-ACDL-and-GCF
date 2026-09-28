@@ -1,8 +1,8 @@
 # 评估台报告 — E2c
 
-- 运行目录:`train_exp_E2c` | 标签:`Holdout_E2c` | N_test = 6,972 | 生成于 2026-09-28 19:02
+- 运行目录:`结果汇总\runs\train_exp_E2c` | 标签:`Holdout_E2c` | N_test = 6,972 | 生成于 2026-09-28 19:11
 - 配置:target=abs  w_profile=none  log_target=False  softplus=True  tag=E2c
-- 指标定义与计算方式:[指标说明](../../指标说明.md)(MAE/nMAE/MB/slope/OD/Gfrac EE/log10 比值/分带规则)
+- 指标定义与计算方式:[指标说明](../../../指标说明.md)(MAE/nMAE/MB/slope/OD/Gfrac EE/log10 比值/分带规则)
 
 ## 一句话结论
 
@@ -14,7 +14,7 @@
 
 ## 图 1|柱含量 OD 散点 + EE 包络
 
-![OD scatter](..\plots\bench_od_scatter_E2c.png)
+![OD scatter](../plots/bench_od_scatter_E2c.png)
 
 **看什么**:点云贴 1:1 虚线的程度 = 柱含量保真能力;红线为 EE 包络 ±(0.05+0.15×AOD)(550nm 形式用于 532nm),
 包络内比例 Gfrac = **50.8%**(低于 66% 满意线)。
@@ -23,7 +23,7 @@ bias = +6.5% 说明总量存在系统性偏移。
 
 ## 图 2|廓线分位带 + 对数差值曲线
 
-![profile](..\plots\bench_profile_E2c.png)
+![profile](../plots/bench_profile_E2c.png)
 
 **看什么**:左栏蓝/红 = 观测/预测的逐层中位数与 25–75 分位带(同批样本同掩膜配对)——
 红带比蓝带"瘦"即动态范围压缩;右栏 log10(σ̂/σ) 中位线在 0 上下 = 典型样本无系统偏差,
@@ -31,7 +31,7 @@ bias = +6.5% 说明总量存在系统性偏移。
 
 ## 图 3|逐层 nMAE / MB / slope / R² 四联
 
-![per layer](..\plots\bench_per_layer_E2c.png)
+![per layer](../plots/bench_per_layer_E2c.png)
 
 **看什么**(自左至右):nMAE 跨层可比的主指标;MB 带符号偏置(偏离 0 的方向 = 总量型误差);
 slope 相对 1 的偏离 = 压缩程度(此栏是基线病灶最直观的面板);R² 仅附图(分母为观测方差,跨层不可比)。

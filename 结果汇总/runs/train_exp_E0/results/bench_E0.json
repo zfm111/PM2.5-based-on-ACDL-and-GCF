@@ -1,7 +1,7 @@
 {
   "name": "E0",
   "tag": "Holdout_E0",
-  "run_dir": "train_exp_E0",
+  "run_dir": "结果汇总\\runs\\train_exp_E0",
   "n_test": 6972,
   "global": {
     "R2": 0.49663035899468155,

@@ -1,7 +1,7 @@
 {
   "name": "E2b",
   "tag": "Holdout_E2b",
-  "run_dir": "train_exp_E2b",
+  "run_dir": "结果汇总\\runs\\train_exp_E2b",
   "n_test": 6972,
   "global": {
     "R2": 0.4374373007730611,

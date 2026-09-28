@@ -1,7 +1,7 @@
 # Step 0 · 代码事实核实（《优化路线讨论.md》§6 七项）
 
 核实时间：2026-09-28。核实对象：`Train_ACDL_ERA5_MatchV2.py`（demo 分支基线 a744073）、
-`acdl_plotting.py`、`train_fixed_case5_abs/results/predictions_Holdout.npz`（B0 基线，N_test=6972）。
+`acdl_plotting.py`、`runs/train_fixed_case5_abs/results/predictions_Holdout.npz`（B0 基线，N_test=6972）。
 
 | # | 问题 | 结论 |
 |---|------|------|

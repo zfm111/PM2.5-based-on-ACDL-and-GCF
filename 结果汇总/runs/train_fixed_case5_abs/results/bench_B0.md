@@ -1,8 +1,8 @@
-# 评估台报告 — E0
+# 评估台报告 — B0
 
-- 运行目录:`train_exp_E0` | 标签:`Holdout_E0` | N_test = 6,972 | 生成于 2026-09-28 19:02
-- 配置:target=abs  w_profile=none  log_target=False  softplus=False  tag=E0
-- 指标定义与计算方式:[指标说明](../../指标说明.md)(MAE/nMAE/MB/slope/OD/Gfrac EE/log10 比值/分带规则)
+- 运行目录:`结果汇总\runs\train_fixed_case5_abs` | 标签:`Holdout` | N_test = 6,972 | 生成于 2026-09-28 19:11
+- 配置:旧运行(无配置快照)
+- 指标定义与计算方式:[指标说明](../../../指标说明.md)(MAE/nMAE/MB/slope/OD/Gfrac EE/log10 比值/分带规则)
 
 ## 一句话结论
 
@@ -14,7 +14,7 @@
 
 ## 图 1|柱含量 OD 散点 + EE 包络
 
-![OD scatter](..\plots\bench_od_scatter_E0.png)
+![OD scatter](../plots/bench_od_scatter_B0.png)
 
 **看什么**:点云贴 1:1 虚线的程度 = 柱含量保真能力;红线为 EE 包络 ±(0.05+0.15×AOD)(550nm 形式用于 532nm),
 包络内比例 Gfrac = **56.3%**(低于 66% 满意线)。
@@ -23,7 +23,7 @@ bias = -1.2% 说明总量基本无偏。
 
 ## 图 2|廓线分位带 + 对数差值曲线
 
-![profile](..\plots\bench_profile_E0.png)
+![profile](../plots/bench_profile_B0.png)
 
 **看什么**:左栏蓝/红 = 观测/预测的逐层中位数与 25–75 分位带(同批样本同掩膜配对)——
 红带比蓝带"瘦"即动态范围压缩;右栏 log10(σ̂/σ) 中位线在 0 上下 = 典型样本无系统偏差,
@@ -31,7 +31,7 @@ bias = -1.2% 说明总量基本无偏。
 
 ## 图 3|逐层 nMAE / MB / slope / R² 四联
 
-![per layer](..\plots\bench_per_layer_E0.png)
+![per layer](../plots/bench_per_layer_B0.png)
 
 **看什么**(自左至右):nMAE 跨层可比的主指标;MB 带符号偏置(偏离 0 的方向 = 总量型误差);
 slope 相对 1 的偏离 = 压缩程度(此栏是基线病灶最直观的面板);R² 仅附图(分母为观测方差,跨层不可比)。
@@ -47,4 +47,4 @@ slope 相对 1 的偏离 = 压缩程度(此栏是基线病灶最直观的面板)
 | 5-10km | 34,164 | 0.0475 | 59.5% | -0.0084 | 0.604 |
 | >10km | 62,730 | 0.0150 | 30.2% | -0.0010 | 0.723 |
 
-> 机器可读明细:`bench_E0.json`(含逐层 32 行)/ `bench_E0.csv`。
+> 机器可读明细:`bench_B0.json`(含逐层 32 行)/ `bench_B0.csv`。
