@@ -68,12 +68,12 @@
 
 ## 个例廓线对比图（2026-09-28 补充，plot_case_profiles.py）
 
-![个例廓线](figures/agl_case_profiles.png)
+![个例廓线](C:/Users/admin/Desktop/Main_ACDL_ERA5_SpatiotemporalAttention_DL/结果汇总/figures/agl_case_profiles.png)
 
 **图 1 怎么读**：留出集按地形带各选 1 个沙尘型个例（按柱含量最大挑选），蓝=ACDL 观测、红=B0-AGL 预测，y 轴=离地高度。
 近地面形态（贴地层峰值）已被 AGL 模型捕获；高消光尾部仍被压缩（与 bench 的 slope<1 诊断一致）。
 
-![ASL vs AGL](figures/agl_vs_asl_plateau.png)
+![ASL vs AGL](C:/Users/admin/Desktop/Main_ACDL_ERA5_SpatiotemporalAttention_DL/结果汇总/figures/agl_vs_asl_plateau.png)
 
 **图 2 怎么读**（y=海拔）：高原个例中 ACDL 观测从 DEM(≈5.0km) 才开始——ASL 模型(灰)在 DEM 以下继续输出
 **无监督的无效值**（地下 0–5km 的 0.02–0.4 km⁻¹ 全是外推噪声），而 AGL 模型(红)从地表起测且跟踪贴地层观测；
