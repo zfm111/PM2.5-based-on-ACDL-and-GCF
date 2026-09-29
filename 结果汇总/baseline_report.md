@@ -1,5 +1,8 @@
 # Step 1 · B0 基线快照报告（评估台首跑）
 
+> 📖 **术语与实验编号**（B0/AGL/ASL/case5/GCF…）统一见《[术语表](术语表.md)》；指标计算与判读见《[指标说明](指标说明.md)》。
+
+
 - 数据：`train_fixed_case5_abs`（abs 目标，case5 匹配产物，34,860 样本，Holdout N=6,972，seed=42）
 - 产物：`runs/train_fixed_case5_abs/results/bench_B0.json|csv` + `plots/bench_od_scatter_B0.png`、
   `bench_profile_B0.png`、`bench_per_layer_B0.png`
