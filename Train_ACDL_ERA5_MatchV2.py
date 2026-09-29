@@ -1078,16 +1078,19 @@ def run(args) -> int:
 
     if run_cv:
         t0 = time.perf_counter()
-        sp = spatial_block_cv(X, T, cfg)
-        s = summarize(sp, "Spatial" + suffix, out_dir, geom=geom, plots=plots)
-        if s:
-            curves_all["Spatial"] = s["r2_mean"]
-            summary["spatial"] = {k: v for k, v in s.items() if k != "r2_mean"}
-        tp = temporal_block_cv(X, T, t_dn, cfg)
-        s = summarize(tp, "Temporal" + suffix, out_dir, geom=geom, plots=plots)
-        if s:
-            curves_all["Temporal"] = s["r2_mean"]
-            summary["temporal"] = {k: v for k, v in s.items() if k != "r2_mean"}
+        cv_mode = str(getattr(args, "cv_mode", "both") or "both")
+        if cv_mode in ("both", "spatial"):
+            sp = spatial_block_cv(X, T, cfg)
+            s = summarize(sp, "Spatial" + suffix, out_dir, geom=geom, plots=plots)
+            if s:
+                curves_all["Spatial"] = s["r2_mean"]
+                summary["spatial"] = {k: v for k, v in s.items() if k != "r2_mean"}
+        if cv_mode in ("both", "temporal"):
+            tp = temporal_block_cv(X, T, t_dn, cfg)
+            s = summarize(tp, "Temporal" + suffix, out_dir, geom=geom, plots=plots)
+            if s:
+                curves_all["Temporal"] = s["r2_mean"]
+                summary["temporal"] = {k: v for k, v in s.items() if k != "r2_mean"}
         print(f"\n[CV] 用时 {time.perf_counter()-t0:.0f}s")
 
     # 多口径对比图(y=高度, x=R²)
@@ -1183,6 +1186,8 @@ if __name__ == "__main__":
                     help="随机留出比例,默认 0.2(只跑一次训练就能看到逐层 R²;随机划分,结论偏乐观)")
     ap.add_argument("--cv", action="store_true",
                     help="跑空间块 + 时间块 CV(慢,默认关闭)")
+    ap.add_argument("--cv-mode", choices=("both", "spatial", "temporal"), default="both",
+                    help="CV 范围: both=空间块3×3+时间块4折(默认) / spatial=仅空间 / temporal=仅时间")
     ap.add_argument("--final", action="store_true",
                     help="额外用全量数据训练并保存 model_final.pt(默认关闭)")
     ap.add_argument("--no-plots", action="store_true",
