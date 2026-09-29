@@ -1,0 +1,396 @@
+==============================================================================
+ACDL×ERA5 MatchV2 训练
+  样本目录: D:/matchdata_fixed_case5
+  输出目录: 结果汇总\runs\train_fixed_case5_abs_cv
+  设备: cpu  epochs=200 batch=256 lr=0.0003 d_model=128
+  开关: target=abs  w_profile=none  log_target=False  softplus=False  tag=B0CV
+==============================================================================
+[DATA] 找到 30 个匹配文件
+  ACDL_ERA5_MatchV2_20220601.mat: 1361 样本 (+3 列)
+  ACDL_ERA5_MatchV2_20220602.mat: 1007 样本 (+3 列)
+  ACDL_ERA5_MatchV2_20220603.mat: 1346 样本 (+3 列)
+  ACDL_ERA5_MatchV2_20220604.mat: 1243 样本 (+3 列)
+  ACDL_ERA5_MatchV2_20220605.mat: 1256 样本 (+3 列)
+  ACDL_ERA5_MatchV2_20220606.mat: 1341 样本 (+3 列)
+  ACDL_ERA5_MatchV2_20220607.mat: 1182 样本 (+3 列)
+  ACDL_ERA5_MatchV2_20220608.mat: 1354 样本 (+3 列)
+  ACDL_ERA5_MatchV2_20220609.mat: 1184 样本 (+3 列)
+  ACDL_ERA5_MatchV2_20220610.mat: 1277 样本 (+3 列)
+  ACDL_ERA5_MatchV2_20220611.mat: 1219 样本 (+3 列)
+  ACDL_ERA5_MatchV2_20220612.mat: 1102 样本 (+3 列)
+  ACDL_ERA5_MatchV2_20220613.mat: 1327 样本 (+3 列)
+  ACDL_ERA5_MatchV2_20220614.mat: 1199 样本 (+3 列)
+  ACDL_ERA5_MatchV2_20220615.mat: 1365 样本 (+3 列)
+  ACDL_ERA5_MatchV2_20220616.mat: 598 样本 (+3 列)
+  ACDL_ERA5_MatchV2_20220617.mat: 1107 样本 (+3 列)
+  ACDL_ERA5_MatchV2_20220618.mat: 1010 样本 (+3 列)
+  ACDL_ERA5_MatchV2_20220619.mat: 1282 样本 (+3 列)
+  ACDL_ERA5_MatchV2_20220620.mat: 1312 样本 (+3 列)
+  ACDL_ERA5_MatchV2_20220621.mat: 945 样本 (+3 列)
+  ACDL_ERA5_MatchV2_20220622.mat: 1352 样本 (+3 列)
+  ACDL_ERA5_MatchV2_20220623.mat: 427 样本 (+3 列)
+  ACDL_ERA5_MatchV2_20220624.mat: 1358 样本 (+3 列)
+  ACDL_ERA5_MatchV2_20220625.mat: 1192 样本 (+3 列)
+  ACDL_ERA5_MatchV2_20220626.mat: 1140 样本 (+3 列)
+  ACDL_ERA5_MatchV2_20220627.mat: 1293 样本 (+3 列)
+  ACDL_ERA5_MatchV2_20220628.mat: 1037 样本 (+3 列)
+  ACDL_ERA5_MatchV2_20220629.mat: 965 样本 (+3 列)
+  ACDL_ERA5_MatchV2_20220630.mat: 1079 样本 (+3 列)
+[DATA] 合计 34860 样本,X=(34860, 103),y=(34860, 32);目标有效率 82.3%
+[DATA] 额外列 3 个: ['BLH_m', 'TCWV_kgm2', 'Z_sfc_m'];Z_sfc 用于修正 L00 厚度(中位 298 m)
+[DATA] 参与训练 34860 样本;目标有效率 82.3%
+[TARGET] 模式 = abs(绝对消光 σ_l, km⁻¹)
+[COLS] 额外 token 维度 = 3 (['BLH_m', 'TCWV_kgm2', 'Z_sfc_m'])
+
+[TARGET] 目标可行性统计
+  样本 34860;每层有效数(前 8 层): L00=10192 L01=14266 L02=16561 L03=18144 L04=19853 L05=21693 L06=23080 L07=23952
+  每层有效数(后 8 层): L24=34831 L25=34854 L26=34860 L27=34860 L28=34860 L29=34860 L30=34860 L31=34860
+  形状目标可用样本: 34689/34860 (99.5%)   [需 ≥10 层 且 厚度覆盖 ≥50%]
+  柱含量可用样本  : 34860/34860 (100.0%)
+  近地面窗口(层底 < 500 m)包含层: L00, L01, L02, L03, L04, L05, L06
+  近地面完整样本  : 10198/34860 (29.3%)   ← 这些才可用于 GCF 评估
+  GCF(近地面 500 m 占比)分位数: p5=0.013 p25=0.030 p50=0.056 p75=0.109 p95=0.262
+  GCF 均值 0.086 ± 0.085(仅统计近地面完整的样本)
+  柱光学厚度分位数: p5=0.214 p50=0.846 p95=2.344
+
+[HOLDOUT] 随机留出 20%(train=27888, test=6972) —— 注意:随机划分,同格点/同时次样本可能跨集,结果偏乐观
+C:\Users\admin\Desktop\Main_ACDL_ERA5_SpatiotemporalAttention_DL\Train_ACDL_ERA5_MatchV2.py:415: UserWarning: enable_nested_tensor is True, but self.use_nested_tensor is False because encoder_layer.norm_first was True
+  self.transformer = nn.TransformerEncoder(enc, num_layers=n_layers)
+    [Holdout] ep  1 train=0.2815 val=0.2460  *best
+    [Holdout] ep  2 train=0.2465 val=0.2374  *best
+    [Holdout] ep  3 train=0.2383 val=0.2319  *best
+    [Holdout] ep  4 train=0.2335 val=0.2290  *best
+    [Holdout] ep  5 train=0.2290 val=0.2259  *best
+    [Holdout] ep  6 train=0.2259 val=0.2224  *best
+    [Holdout] ep  7 train=0.2231 val=0.2210  *best
+    [Holdout] ep  8 train=0.2207 val=0.2198  *best
+    [Holdout] ep  9 train=0.2182 val=0.2173  *best
+    [Holdout] ep 10 train=0.2164 val=0.2159  *best
+    [Holdout] ep 11 train=0.2142 val=0.2148  *best
+    [Holdout] ep 12 train=0.2125 val=0.2134  *best
+    [Holdout] ep 13 train=0.2106 val=0.2120  *best
+    [Holdout] ep 14 train=0.2088 val=0.2098  *best
+    [Holdout] ep 15 train=0.2071 val=0.2086  *best
+    [Holdout] ep 16 train=0.2053 val=0.2084  *best
+    [Holdout] ep 17 train=0.2040 val=0.2076  *best
+    [Holdout] ep 18 train=0.2031 val=0.2059  *best
+    [Holdout] ep 19 train=0.2009 val=0.2058  *best
+    [Holdout] ep 20 train=0.1995 val=0.2039  *best
+    [Holdout] ep 21 train=0.1983 val=0.2029  *best
+    [Holdout] ep 22 train=0.1969 val=0.2021  *best
+    [Holdout] ep 23 train=0.1961 val=0.2009  *best
+    [Holdout] ep 24 train=0.1945 val=0.2002  *best
+    [Holdout] ep 25 train=0.1930 val=0.1997  *best
+    [Holdout] ep 26 train=0.1923 val=0.1991  *best
+    [Holdout] ep 27 train=0.1910 val=0.1985  *best
+    [Holdout] ep 28 train=0.1897 val=0.1971  *best
+    [Holdout] ep 29 train=0.1889 val=0.1969  *best
+    [Holdout] ep 30 train=0.1880 val=0.1977
+    [Holdout] ep 31 train=0.1868 val=0.1958  *best
+    [Holdout] ep 33 train=0.1845 val=0.1939  *best
+    [Holdout] ep 35 train=0.1828 val=0.1935  *best
+    [Holdout] ep 36 train=0.1816 val=0.1935  *best
+    [Holdout] ep 37 train=0.1806 val=0.1925  *best
+    [Holdout] ep 38 train=0.1795 val=0.1924  *best
+    [Holdout] ep 39 train=0.1793 val=0.1913  *best
+    [Holdout] ep 40 train=0.1782 val=0.1907  *best
+    [Holdout] ep 42 train=0.1766 val=0.1902  *best
+    [Holdout] ep 44 train=0.1748 val=0.1891  *best
+    [Holdout] ep 46 train=0.1733 val=0.1888  *best
+    [Holdout] ep 49 train=0.1709 val=0.1876  *best
+    [Holdout] ep 50 train=0.1701 val=0.1880
+    [Holdout] ep 51 train=0.1697 val=0.1871  *best
+    [Holdout] ep 52 train=0.1688 val=0.1869  *best
+    [Holdout] ep 53 train=0.1683 val=0.1869  *best
+    [Holdout] ep 54 train=0.1674 val=0.1863  *best
+    [Holdout] ep 55 train=0.1666 val=0.1856  *best
+    [Holdout] ep 56 train=0.1657 val=0.1854  *best
+    [Holdout] ep 59 train=0.1638 val=0.1849  *best
+    [Holdout] ep 60 train=0.1629 val=0.1850
+    [Holdout] ep 61 train=0.1626 val=0.1848  *best
+    [Holdout] ep 62 train=0.1620 val=0.1844  *best
+    [Holdout] ep 63 train=0.1613 val=0.1841  *best
+    [Holdout] ep 64 train=0.1608 val=0.1841  *best
+    [Holdout] ep 65 train=0.1607 val=0.1837  *best
+    [Holdout] ep 66 train=0.1595 val=0.1832  *best
+    [Holdout] ep 67 train=0.1589 val=0.1831  *best
+    [Holdout] ep 69 train=0.1582 val=0.1827  *best
+    [Holdout] ep 70 train=0.1573 val=0.1831
+    [Holdout] ep 72 train=0.1562 val=0.1819  *best
+    [Holdout] ep 77 train=0.1535 val=0.1815  *best
+    [Holdout] ep 80 train=0.1520 val=0.1810  *best
+    [Holdout] ep 82 train=0.1513 val=0.1806  *best
+    [Holdout] ep 88 train=0.1487 val=0.1802  *best
+    [Holdout] ep 90 train=0.1477 val=0.1800  *best
+    [Holdout] ep 93 train=0.1463 val=0.1799  *best
+    [Holdout] ep 94 train=0.1459 val=0.1796  *best
+    [Holdout] ep 95 train=0.1455 val=0.1794  *best
+    [Holdout] ep 99 train=0.1439 val=0.1793  *best
+    [Holdout] ep100 train=0.1440 val=0.1790  *best
+    [Holdout] ep108 train=0.1409 val=0.1789  *best
+    [Holdout] ep110 train=0.1401 val=0.1786  *best
+    [Holdout] ep112 train=0.1399 val=0.1784  *best
+    [Holdout] ep120 train=0.1375 val=0.1788
+    [Holdout] ep124 train=0.1362 val=0.1783  *best
+    [Holdout] ep128 train=0.1350 val=0.1783  *best
+    [Holdout] ep130 train=0.1347 val=0.1786
+    [Holdout] ep133 train=0.1343 val=0.1780  *best
+    [Holdout] ep140 train=0.1325 val=0.1784
+    [Holdout] ep141 train=0.1325 val=0.1780  *best
+    [Holdout] ep145 train=0.1319 val=0.1779  *best
+    [Holdout] ep148 train=0.1315 val=0.1778  *best
+    [Holdout] ep149 train=0.1315 val=0.1777  *best
+    [Holdout] ep150 train=0.1308 val=0.1785
+    [Holdout] ep160 train=0.1301 val=0.1780
+    [Holdout] 绝对消光: R²=0.4966 RMSE=0.0858 MAE=0.0391  GCF R²=0.423(MAE=0.042, n=2079) (best ep149)
+
+[Holdout_B0CV] 折数 1   —— 逐层指标 = 绝对消光 σ(km⁻¹)
+  全局 R²   : 0.4966 ± 0.0000
+  全局 RMSE : 0.0858 ± 0.0000
+  全局 MAE  : 0.0391 ± 0.0000
+  GCF  R²   : 0.4229 ± 0.0000   MAE 0.0421   (n=2079)   ← 只用训练所涉样本
+  逐层 R²(绝对消光;L00=最低层 → L31=最高层):
+    L00= 0.313  L01= 0.416  L02= 0.373  L03= 0.245  L04= 0.260  L05= 0.252  L06= 0.369  L07= 0.348
+    L08= 0.309  L09= 0.300  L10= 0.278  L11= 0.354  L12= 0.360  L13= 0.354  L14= 0.353  L15= 0.372
+    L16= 0.435  L17= 0.457  L18= 0.480  L19= 0.533  L20= 0.542  L21= 0.524  L22= 0.570  L23= 0.615
+    L24= 0.674  L25= 0.774  L26= 0.810  L27= 0.761  L28= 0.781  L29= 0.705  L30= 0.508  L31= 0.384
+  预测值已落盘: 结果汇总\runs\train_fixed_case5_abs_cv\results\predictions_Holdout_B0CV.npz  (2.3 MB)  → 可用 Plot_Training_Results.py 重画
+  图: 结果汇总\runs\train_fixed_case5_abs_cv\plots\per_layer_r2_Holdout_B0CV.png
+  图: 结果汇总\runs\train_fixed_case5_abs_cv\plots\gcf_scatter_Holdout_B0CV.png
+
+[CV-空间块] 3×3
+C:\Users\admin\Desktop\Main_ACDL_ERA5_SpatiotemporalAttention_DL\Train_ACDL_ERA5_MatchV2.py:415: UserWarning: enable_nested_tensor is True, but self.use_nested_tensor is False because encoder_layer.norm_first was True
+  self.transformer = nn.TransformerEncoder(enc, num_layers=n_layers)
+    [Spatial(1,1)] ep  1 train=0.2733 val=0.3146  *best
+    [Spatial(1,1)] ep  2 train=0.2395 val=0.3023  *best
+    [Spatial(1,1)] ep  4 train=0.2263 val=0.2960  *best
+    [Spatial(1,1)] ep  7 train=0.2163 val=0.2946  *best
+    [Spatial(1,1)] ep 10 train=0.2093 val=0.2984
+    [Spatial(1,1)] ep 20 train=0.1931 val=0.3021
+    [Spatial(1,1)] 绝对消光: R²=0.2245 RMSE=0.1090 MAE=0.0628  GCF R²=0.038(MAE=0.044, n=2154) (best ep7)
+C:\Users\admin\Desktop\Main_ACDL_ERA5_SpatiotemporalAttention_DL\Train_ACDL_ERA5_MatchV2.py:415: UserWarning: enable_nested_tensor is True, but self.use_nested_tensor is False because encoder_layer.norm_first was True
+  self.transformer = nn.TransformerEncoder(enc, num_layers=n_layers)
+    [Spatial(1,2)] ep  1 train=0.2792 val=0.2803  *best
+    [Spatial(1,2)] ep  2 train=0.2455 val=0.2713  *best
+    [Spatial(1,2)] ep  3 train=0.2374 val=0.2689  *best
+    [Spatial(1,2)] ep  4 train=0.2314 val=0.2643  *best
+    [Spatial(1,2)] ep 10 train=0.2142 val=0.2724
+    [Spatial(1,2)] ep 20 train=0.1974 val=0.2817
+    [Spatial(1,2)] 绝对消光: R²=0.2907 RMSE=0.1025 MAE=0.0520  GCF R²=-0.102(MAE=0.062, n=115) (best ep4)
+C:\Users\admin\Desktop\Main_ACDL_ERA5_SpatiotemporalAttention_DL\Train_ACDL_ERA5_MatchV2.py:415: UserWarning: enable_nested_tensor is True, but self.use_nested_tensor is False because encoder_layer.norm_first was True
+  self.transformer = nn.TransformerEncoder(enc, num_layers=n_layers)
+    [Spatial(1,3)] ep  1 train=0.2837 val=0.2118  *best
+    [Spatial(1,3)] ep  2 train=0.2492 val=0.2060  *best
+    [Spatial(1,3)] ep  3 train=0.2408 val=0.2037  *best
+    [Spatial(1,3)] ep  4 train=0.2352 val=0.2005  *best
+    [Spatial(1,3)] ep  5 train=0.2312 val=0.1980  *best
+    [Spatial(1,3)] ep  7 train=0.2246 val=0.1965  *best
+    [Spatial(1,3)] ep  8 train=0.2220 val=0.1965  *best
+    [Spatial(1,3)] ep  9 train=0.2190 val=0.1957  *best
+    [Spatial(1,3)] ep 10 train=0.2167 val=0.1953  *best
+    [Spatial(1,3)] ep 20 train=0.1991 val=0.1954
+    [Spatial(1,3)] ep 30 train=0.1867 val=0.1989
+    [Spatial(1,3)] 绝对消光: R²=0.2349 RMSE=0.0952 MAE=0.0379  GCF R²=-2.348(MAE=0.043, n=97) (best ep10)
+C:\Users\admin\Desktop\Main_ACDL_ERA5_SpatiotemporalAttention_DL\Train_ACDL_ERA5_MatchV2.py:415: UserWarning: enable_nested_tensor is True, but self.use_nested_tensor is False because encoder_layer.norm_first was True
+  self.transformer = nn.TransformerEncoder(enc, num_layers=n_layers)
+    [Spatial(2,1)] ep  1 train=0.2756 val=0.2834  *best
+    [Spatial(2,1)] ep  2 train=0.2417 val=0.2764  *best
+    [Spatial(2,1)] ep  3 train=0.2329 val=0.2732  *best
+    [Spatial(2,1)] ep  4 train=0.2274 val=0.2724  *best
+    [Spatial(2,1)] ep  5 train=0.2231 val=0.2707  *best
+    [Spatial(2,1)] ep  7 train=0.2169 val=0.2691  *best
+    [Spatial(2,1)] ep  9 train=0.2117 val=0.2679  *best
+    [Spatial(2,1)] ep 10 train=0.2098 val=0.2695
+    [Spatial(2,1)] ep 20 train=0.1925 val=0.2745
+    [Spatial(2,1)] 绝对消光: R²=0.2142 RMSE=0.1063 MAE=0.0554  GCF R²=0.106(MAE=0.041, n=2460) (best ep9)
+C:\Users\admin\Desktop\Main_ACDL_ERA5_SpatiotemporalAttention_DL\Train_ACDL_ERA5_MatchV2.py:415: UserWarning: enable_nested_tensor is True, but self.use_nested_tensor is False because encoder_layer.norm_first was True
+  self.transformer = nn.TransformerEncoder(enc, num_layers=n_layers)
+    [Spatial(2,2)] ep  1 train=0.2767 val=0.3294  *best
+    [Spatial(2,2)] ep  2 train=0.2426 val=0.3267  *best
+    [Spatial(2,2)] ep  3 train=0.2346 val=0.3235  *best
+    [Spatial(2,2)] ep  4 train=0.2287 val=0.3221  *best
+    [Spatial(2,2)] ep  5 train=0.2245 val=0.3194  *best
+    [Spatial(2,2)] ep 10 train=0.2110 val=0.3224
+    [Spatial(2,2)] ep 20 train=0.1943 val=0.3272
+    [Spatial(2,2)] 绝对消光: R²=0.1902 RMSE=0.1215 MAE=0.0607  GCF R²=0.347(MAE=0.049, n=147) (best ep5)
+C:\Users\admin\Desktop\Main_ACDL_ERA5_SpatiotemporalAttention_DL\Train_ACDL_ERA5_MatchV2.py:415: UserWarning: enable_nested_tensor is True, but self.use_nested_tensor is False because encoder_layer.norm_first was True
+  self.transformer = nn.TransformerEncoder(enc, num_layers=n_layers)
+    [Spatial(2,3)] ep  1 train=0.2834 val=0.2183  *best
+    [Spatial(2,3)] ep  2 train=0.2475 val=0.2122  *best
+    [Spatial(2,3)] ep  3 train=0.2414 val=0.2092  *best
+    [Spatial(2,3)] ep  4 train=0.2341 val=0.2061  *best
+    [Spatial(2,3)] ep  7 train=0.2256 val=0.2037  *best
+    [Spatial(2,3)] ep  9 train=0.2210 val=0.2034  *best
+    [Spatial(2,3)] ep 10 train=0.2206 val=0.2009  *best
+    [Spatial(2,3)] ep 16 train=0.2081 val=0.2005  *best
+    [Spatial(2,3)] ep 17 train=0.2069 val=0.2005  *best
+    [Spatial(2,3)] ep 20 train=0.2083 val=0.2021
+    [Spatial(2,3)] ep 22 train=0.1998 val=0.2003  *best
+    [Spatial(2,3)] ep 30 train=0.1934 val=0.2043
+    [Spatial(2,3)] ep 40 train=0.1817 val=0.2032
+    [Spatial(2,3)] 绝对消光: R²=0.2878 RMSE=0.0958 MAE=0.0395 (best ep22)
+C:\Users\admin\Desktop\Main_ACDL_ERA5_SpatiotemporalAttention_DL\Train_ACDL_ERA5_MatchV2.py:415: UserWarning: enable_nested_tensor is True, but self.use_nested_tensor is False because encoder_layer.norm_first was True
+  self.transformer = nn.TransformerEncoder(enc, num_layers=n_layers)
+    [Spatial(3,1)] ep  1 train=0.2780 val=0.2290  *best
+    [Spatial(3,1)] ep  2 train=0.2445 val=0.2242  *best
+    [Spatial(3,1)] ep  3 train=0.2358 val=0.2177  *best
+    [Spatial(3,1)] ep  7 train=0.2200 val=0.2169  *best
+    [Spatial(3,1)] ep 10 train=0.2124 val=0.2149  *best
+    [Spatial(3,1)] ep 20 train=0.1945 val=0.2191
+    [Spatial(3,1)] ep 30 train=0.1821 val=0.2216
+    [Spatial(3,1)] 绝对消光: R²=0.1991 RMSE=0.0967 MAE=0.0461  GCF R²=0.070(MAE=0.060, n=2772) (best ep10)
+C:\Users\admin\Desktop\Main_ACDL_ERA5_SpatiotemporalAttention_DL\Train_ACDL_ERA5_MatchV2.py:415: UserWarning: enable_nested_tensor is True, but self.use_nested_tensor is False because encoder_layer.norm_first was True
+  self.transformer = nn.TransformerEncoder(enc, num_layers=n_layers)
+    [Spatial(3,2)] ep  1 train=0.2791 val=0.2535  *best
+    [Spatial(3,2)] ep  2 train=0.2454 val=0.2449  *best
+    [Spatial(3,2)] ep  4 train=0.2315 val=0.2422  *best
+    [Spatial(3,2)] ep  5 train=0.2271 val=0.2410  *best
+    [Spatial(3,2)] ep  7 train=0.2209 val=0.2380  *best
+    [Spatial(3,2)] ep 10 train=0.2136 val=0.2394
+    [Spatial(3,2)] ep 20 train=0.1962 val=0.2471
+    [Spatial(3,2)] 绝对消光: R²=0.2208 RMSE=0.1089 MAE=0.0522  GCF R²=0.182(MAE=0.055, n=1958) (best ep7)
+C:\Users\admin\Desktop\Main_ACDL_ERA5_SpatiotemporalAttention_DL\Train_ACDL_ERA5_MatchV2.py:415: UserWarning: enable_nested_tensor is True, but self.use_nested_tensor is False because encoder_layer.norm_first was True
+  self.transformer = nn.TransformerEncoder(enc, num_layers=n_layers)
+    [Spatial(3,3)] ep  1 train=0.2802 val=0.2589  *best
+    [Spatial(3,3)] ep  2 train=0.2466 val=0.2517  *best
+    [Spatial(3,3)] ep  3 train=0.2384 val=0.2509  *best
+    [Spatial(3,3)] ep  4 train=0.2331 val=0.2475  *best
+    [Spatial(3,3)] ep  9 train=0.2173 val=0.2460  *best
+    [Spatial(3,3)] ep 10 train=0.2151 val=0.2523
+    [Spatial(3,3)] ep 20 train=0.1974 val=0.2526
+    [Spatial(3,3)] 绝对消光: R²=0.2497 RMSE=0.1107 MAE=0.0499  GCF R²=0.204(MAE=0.072, n=406) (best ep9)
+C:\Users\admin\Desktop\Main_ACDL_ERA5_SpatiotemporalAttention_DL\Train_ACDL_ERA5_MatchV2.py:415: UserWarning: enable_nested_tensor is True, but self.use_nested_tensor is False because encoder_layer.norm_first was True
+  self.transformer = nn.TransformerEncoder(enc, num_layers=n_layers)
+    [Spatial(3,1)] ep  1 train=0.2764 val=0.1824  *best
+    [Spatial(3,1)] ep  2 train=0.2438 val=0.1710  *best
+    [Spatial(3,1)] ep  5 train=0.2263 val=0.1690  *best
+    [Spatial(3,1)] ep  6 train=0.2232 val=0.1654  *best
+    [Spatial(3,1)] ep 10 train=0.2132 val=0.1674
+    [Spatial(3,1)] ep 11 train=0.2111 val=0.1652  *best
+    [Spatial(3,1)] ep 19 train=0.1977 val=0.1651  *best
+    [Spatial(3,1)] ep 20 train=0.1964 val=0.1671
+    [Spatial(3,1)] ep 22 train=0.1936 val=0.1634  *best
+    [Spatial(3,1)] ep 27 train=0.1878 val=0.1610  *best
+    [Spatial(3,1)] ep 30 train=0.1841 val=0.1637
+    [Spatial(3,1)] ep 32 train=0.1824 val=0.1604  *best
+    [Spatial(3,1)] ep 33 train=0.1813 val=0.1582  *best
+    [Spatial(3,1)] ep 40 train=0.1751 val=0.1586
+    [Spatial(3,1)] ep 42 train=0.1731 val=0.1580  *best
+    [Spatial(3,1)] ep 46 train=0.1698 val=0.1555  *best
+    [Spatial(3,1)] ep 50 train=0.1667 val=0.1599
+    [Spatial(3,1)] ep 60 train=0.1605 val=0.1551  *best
+    [Spatial(3,1)] ep 70 train=0.1546 val=0.1609
+    [Spatial(3,1)] ep 80 train=0.1496 val=0.1615
+    [Spatial(3,1)] 绝对消光: R²=0.3969 RMSE=0.0834 MAE=0.0356  GCF R²=0.235(MAE=0.075, n=47) (best ep60)
+C:\Users\admin\Desktop\Main_ACDL_ERA5_SpatiotemporalAttention_DL\Train_ACDL_ERA5_MatchV2.py:415: UserWarning: enable_nested_tensor is True, but self.use_nested_tensor is False because encoder_layer.norm_first was True
+  self.transformer = nn.TransformerEncoder(enc, num_layers=n_layers)
+    [Spatial(3,2)] ep  1 train=0.2758 val=0.2600  *best
+    [Spatial(3,2)] ep  2 train=0.2458 val=0.2525  *best
+    [Spatial(3,2)] ep  3 train=0.2394 val=0.2472  *best
+    [Spatial(3,2)] ep  4 train=0.2327 val=0.2458  *best
+    [Spatial(3,2)] ep  5 train=0.2277 val=0.2304  *best
+    [Spatial(3,2)] ep 10 train=0.2152 val=0.2521
+    [Spatial(3,2)] ep 20 train=0.1998 val=0.2328
+    [Spatial(3,2)] ep 23 train=0.1979 val=0.2297  *best
+    [Spatial(3,2)] ep 24 train=0.1963 val=0.2249  *best
+    [Spatial(3,2)] ep 30 train=0.1889 val=0.2185  *best
+    [Spatial(3,2)] ep 32 train=0.1870 val=0.2152  *best
+    [Spatial(3,2)] ep 37 train=0.1836 val=0.2146  *best
+    [Spatial(3,2)] ep 40 train=0.1798 val=0.2284
+    [Spatial(3,2)] ep 50 train=0.1724 val=0.2203
+    [Spatial(3,2)] 绝对消光: R²=0.4427 RMSE=0.1024 MAE=0.0471  GCF R²=-0.541(MAE=0.046, n=23) (best ep37)
+C:\Users\admin\Desktop\Main_ACDL_ERA5_SpatiotemporalAttention_DL\Train_ACDL_ERA5_MatchV2.py:415: UserWarning: enable_nested_tensor is True, but self.use_nested_tensor is False because encoder_layer.norm_first was True
+  self.transformer = nn.TransformerEncoder(enc, num_layers=n_layers)
+    [Spatial(3,3)] ep  1 train=0.2758 val=0.2460  *best
+    [Spatial(3,3)] ep  2 train=0.2437 val=0.2325  *best
+    [Spatial(3,3)] ep  3 train=0.2356 val=0.2258  *best
+    [Spatial(3,3)] ep  5 train=0.2266 val=0.2212  *best
+    [Spatial(3,3)] ep  6 train=0.2231 val=0.2206  *best
+    [Spatial(3,3)] ep  7 train=0.2203 val=0.2128  *best
+    [Spatial(3,3)] ep 10 train=0.2131 val=0.2087  *best
+    [Spatial(3,3)] ep 13 train=0.2074 val=0.2060  *best
+    [Spatial(3,3)] ep 17 train=0.2008 val=0.2055  *best
+    [Spatial(3,3)] ep 18 train=0.1990 val=0.2050  *best
+    [Spatial(3,3)] ep 20 train=0.1962 val=0.2063
+    [Spatial(3,3)] ep 21 train=0.1949 val=0.2041  *best
+    [Spatial(3,3)] ep 23 train=0.1921 val=0.2032  *best
+    [Spatial(3,3)] ep 25 train=0.1899 val=0.2019  *best
+    [Spatial(3,3)] ep 30 train=0.1844 val=0.2025
+    [Spatial(3,3)] ep 40 train=0.1751 val=0.2221
+    [Spatial(3,3)] 绝对消光: R²=0.4486 RMSE=0.0964 MAE=0.0435  GCF R²=-1.937(MAE=0.031, n=18) (best ep25)
+  块 12: 样本不足(te=1,tr=34859),跳过
+
+[Spatial_B0CV] 折数 12   —— 逐层指标 = 绝对消光 σ(km⁻¹)
+  全局 R²   : 0.2833 ± 0.0899
+  全局 RMSE : 0.1024 ± 0.0094
+  全局 MAE  : 0.0485 ± 0.0083
+  GCF  R²   : -0.3406 ± 0.8822   MAE 0.0524   (n=10198)   ← 只用训练所涉样本
+  逐层 R²(绝对消光;L00=最低层 → L31=最高层):
+    L00=-177.118  L01=-83.364  L02= 0.017  L03= 0.035  L04=-0.080  L05= 0.076  L06= 0.115  L07= 0.096
+    L08= 0.094  L09= 0.139  L10= 0.162  L11= 0.149  L12= 0.134  L13= 0.201  L14= 0.171  L15= 0.145
+    L16= 0.184  L17= 0.202  L18= 0.212  L19= 0.249  L20= 0.261  L21= 0.226  L22= 0.255  L23= 0.176
+    L24= 0.001  L25= 0.109  L26= 0.108  L27= 0.451  L28= 0.677  L29= 0.545  L30= 0.335  L31= 0.243
+  预测值已落盘: 结果汇总\runs\train_fixed_case5_abs_cv\results\predictions_Spatial_B0CV.npz  (11.1 MB)  → 可用 Plot_Training_Results.py 重画
+  图: 结果汇总\runs\train_fixed_case5_abs_cv\plots\per_layer_r2_Spatial_B0CV.png
+  图: 结果汇总\runs\train_fixed_case5_abs_cv\plots\gcf_scatter_Spatial_B0CV.png
+
+[CV-时间块] 4 折(按 ERA5_Time 排序切块)
+C:\Users\admin\Desktop\Main_ACDL_ERA5_SpatiotemporalAttention_DL\Train_ACDL_ERA5_MatchV2.py:415: UserWarning: enable_nested_tensor is True, but self.use_nested_tensor is False because encoder_layer.norm_first was True
+  self.transformer = nn.TransformerEncoder(enc, num_layers=n_layers)
+    [Temporal-Fold1] ep  1 train=0.2832 val=0.2527  *best
+    [Temporal-Fold1] ep  2 train=0.2474 val=0.2487  *best
+    [Temporal-Fold1] ep  3 train=0.2392 val=0.2460  *best
+    [Temporal-Fold1] ep  4 train=0.2333 val=0.2439  *best
+    [Temporal-Fold1] ep  5 train=0.2291 val=0.2417  *best
+    [Temporal-Fold1] ep 10 train=0.2150 val=0.2446
+    [Temporal-Fold1] ep 20 train=0.1970 val=0.2494
+    [Temporal-Fold1] 绝对消光: R²=0.2535 RMSE=0.1044 MAE=0.0496  GCF R²=0.070(MAE=0.056, n=2553) (best ep5)
+C:\Users\admin\Desktop\Main_ACDL_ERA5_SpatiotemporalAttention_DL\Train_ACDL_ERA5_MatchV2.py:415: UserWarning: enable_nested_tensor is True, but self.use_nested_tensor is False because encoder_layer.norm_first was True
+  self.transformer = nn.TransformerEncoder(enc, num_layers=n_layers)
+    [Temporal-Fold2] ep  1 train=0.2834 val=0.2337  *best
+    [Temporal-Fold2] ep  2 train=0.2472 val=0.2279  *best
+    [Temporal-Fold2] ep  3 train=0.2381 val=0.2247  *best
+    [Temporal-Fold2] ep  5 train=0.2280 val=0.2243  *best
+    [Temporal-Fold2] ep  6 train=0.2246 val=0.2243  *best
+    [Temporal-Fold2] ep 10 train=0.2134 val=0.2261
+    [Temporal-Fold2] ep 20 train=0.1962 val=0.2319
+    [Temporal-Fold2] 绝对消光: R²=0.2441 RMSE=0.1006 MAE=0.0470  GCF R²=0.177(MAE=0.049, n=2778) (best ep6)
+C:\Users\admin\Desktop\Main_ACDL_ERA5_SpatiotemporalAttention_DL\Train_ACDL_ERA5_MatchV2.py:415: UserWarning: enable_nested_tensor is True, but self.use_nested_tensor is False because encoder_layer.norm_first was True
+  self.transformer = nn.TransformerEncoder(enc, num_layers=n_layers)
+    [Temporal-Fold3] ep  1 train=0.2825 val=0.2628  *best
+    [Temporal-Fold3] ep  2 train=0.2458 val=0.2606  *best
+    [Temporal-Fold3] ep  3 train=0.2369 val=0.2557  *best
+    [Temporal-Fold3] ep  4 train=0.2307 val=0.2546  *best
+    [Temporal-Fold3] ep 10 train=0.2119 val=0.2583
+    [Temporal-Fold3] ep 20 train=0.1949 val=0.2675
+    [Temporal-Fold3] 绝对消光: R²=0.2375 RMSE=0.1090 MAE=0.0525  GCF R²=0.194(MAE=0.053, n=2498) (best ep4)
+C:\Users\admin\Desktop\Main_ACDL_ERA5_SpatiotemporalAttention_DL\Train_ACDL_ERA5_MatchV2.py:415: UserWarning: enable_nested_tensor is True, but self.use_nested_tensor is False because encoder_layer.norm_first was True
+  self.transformer = nn.TransformerEncoder(enc, num_layers=n_layers)
+    [Temporal-Fold4] ep  1 train=0.2824 val=0.2610  *best
+    [Temporal-Fold4] ep  2 train=0.2461 val=0.2525  *best
+    [Temporal-Fold4] ep  3 train=0.2377 val=0.2505  *best
+    [Temporal-Fold4] ep  4 train=0.2320 val=0.2483  *best
+    [Temporal-Fold4] ep  7 train=0.2215 val=0.2480  *best
+    [Temporal-Fold4] ep 10 train=0.2142 val=0.2513
+    [Temporal-Fold4] ep 20 train=0.1966 val=0.2607
+    [Temporal-Fold4] 绝对消光: R²=0.2424 RMSE=0.1052 MAE=0.0504  GCF R²=0.110(MAE=0.048, n=2369) (best ep7)
+
+[Temporal_B0CV] 折数 4   —— 逐层指标 = 绝对消光 σ(km⁻¹)
+  全局 R²   : 0.2444 ± 0.0058
+  全局 RMSE : 0.1048 ± 0.0030
+  全局 MAE  : 0.0499 ± 0.0020
+  GCF  R²   : 0.1377 ± 0.0501   MAE 0.0514   (n=10198)   ← 只用训练所涉样本
+  逐层 R²(绝对消光;L00=最低层 → L31=最高层):
+    L00= 0.117  L01= 0.128  L02= 0.099  L03= 0.052  L04= 0.074  L05= 0.107  L06= 0.127  L07= 0.138
+    L08= 0.155  L09= 0.156  L10= 0.142  L11= 0.160  L12= 0.172  L13= 0.181  L14= 0.155  L15= 0.148
+    L16= 0.174  L17= 0.204  L18= 0.196  L19= 0.195  L20= 0.189  L21= 0.180  L22= 0.214  L23= 0.249
+    L24= 0.296  L25= 0.285  L26= 0.215  L27= 0.206  L28= 0.691  L29= 0.587  L30= 0.379  L31= 0.244
+  预测值已落盘: 结果汇总\runs\train_fixed_case5_abs_cv\results\predictions_Temporal_B0CV.npz  (11.1 MB)  → 可用 Plot_Training_Results.py 重画
+  图: 结果汇总\runs\train_fixed_case5_abs_cv\plots\per_layer_r2_Temporal_B0CV.png
+  图: 结果汇总\runs\train_fixed_case5_abs_cv\plots\gcf_scatter_Temporal_B0CV.png
+
+[CV] 用时 3343s
+  图: 结果汇总\runs\train_fixed_case5_abs_cv\plots\per_layer_r2_all.png
+
+[DONE]
+[STATUS] ASL_CV exit=0

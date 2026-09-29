@@ -1,4 +1,31 @@
 {
+  "holdout": {
+    "R2_global": 0.4797405159820195,
+    "RMSE_global": 0.08387015690236724,
+    "MAE_global": 0.036322654189551794,
+    "N_valid": 203425,
+    "N_test": 6972,
+    "fold": "Holdout",
+    "best_epoch": 118,
+    "val_loss": 0.18308982253074646,
+    "n_train": 27888,
+    "n_test": 6972,
+    "target": "abs",
+    "METRIC": "abs_extinction (km^-1)",
+    "recon": "identity",
+    "TARGET_KIND": "abs",
+    "log_target": false,
+    "softplus": false,
+    "w_profile": "none",
+    "n_gcf": 3903,
+    "n_gcf_all": 3903,
+    "GCF_R2": 0.6052835048382796,
+    "GCF_MAE": 0.07044255868262919,
+    "GCF_R2_all": 0.6052835048382796,
+    "GCF_MAE_all": 0.07044255868262919,
+    "OD_R2": 0.6264847406438018,
+    "OD_MAE": 0.2543123271148688
+  },
   "spatial": {
     "R2_global_mean": 0.30304697585142343,
     "R2_global_std": 0.0740709685580476,
@@ -106,6 +133,6 @@
       21.962409209774368,
       23.395057648787112
     ],
-    "exp_tag": "CV"
+    "exp_tag": "AGLB0CV"
   }
 }
