@@ -1,6 +1,6 @@
 # Step 0 · 代码事实核实（《优化路线讨论.md》§6 七项）
 
-核实时间：2026-09-28。核实对象：`scripts/Train_ACDL_ERA5_MatchV2.py`（demo 分支基线 a744073）、
+核实时间：2026-09-28。核实对象：`scripts/train_acdl_era5_match_v2.py`（demo 分支基线 a744073）、
 `scripts/acdl_plotting.py`、`runs/train_fixed_case5_abs/results/predictions_Holdout.npz`（B0 基线，N_test=6972）。
 
 | # | 问题 | 结论 |
@@ -15,7 +15,7 @@
 
 ## 逐项细节
 
-**1. 损失等权** — `masked_huber`（scripts/Train_ACDL_ERA5_MatchV2.py:410）：`(huber·mask).sum()/mask.sum()`，
+**1. 损失等权** — `masked_huber`（scripts/train_acdl_era5_match_v2.py:410）：`(huber·mask).sum()/mask.sum()`，
 无高度权重。注意目标在计损失前已逐层 z-score（`fit_target_scaler`，L401），所以现状等权 =
 "每层相对（标准化）误差等权"，不是"绝对 km⁻¹ 误差等权"。
 
@@ -68,7 +68,7 @@ L22 起 ≥99%，L25-L31 = 100%。
 完整分析见《低层缺失诊断.md》与 `scripts/diagnose_low_layers.py`。结论：
 
 - **L00–L02 的缺失 91–95% 是硬几何**：ERA5 气压层层高以海拔为基准，段边界 `min(surf,H0)`
-  （scripts/Match_ACDL_ERA5_FromScratch.py:558-560），DEM ≥ 段顶 → 段空/全 bin 在地下 → Ext 必 NaN。
+  （scripts/match_acdl_era5_from_scratch.py:558-560），DEM ≥ 段顶 → 段空/全 bin 在地下 → Ext 必 NaN。
 - 条件有效率：段顶在地上 73–80%，在地下平均 34%（ surf_h 取组内 DEM 均值致边界混合）。
 - 云 QC（case4 vs case5）：case4 目标总有效率仅 10.5%（case5 82.3%）；L00 有效率 0.8% vs 29.2%
   → case5 已回收 ~28pp；**进一步放松 case 口径的空间已不大**（case5 无云规则）。

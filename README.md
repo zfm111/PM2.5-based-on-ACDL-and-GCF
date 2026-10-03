@@ -10,21 +10,21 @@
 
 ```
 ├─ scripts/                 全部可执行代码(从仓库根目录运行)
-│   ├─ Match_ACDL_ERA5_FromScratch.py   ACDL×ERA5 匹配(--vertical asl|agl, QC case1–5)
-│   ├─ Train_ACDL_ERA5_MatchV2.py       训练(--target abs, --cv, --w-profile, --log-target…)
+│   ├─ match_acdl_era5_from_scratch.py   ACDL×ERA5 匹配(--vertical asl|agl, QC case1–5)
+│   ├─ train_acdl_era5_match_v2.py       训练(--target abs, --cv, --w-profile, --log-target…)
 │   ├─ evaluate_bench.py                评估台:四指标+EE 散点+分位带图(bench_*.md/json)
-│   ├─ acdl_plotting.py / Plot_Training_Results.py   绘图(与训练解耦)
+│   ├─ acdl_plotting.py / plot_training_results.py   绘图(与训练解耦)
 │   ├─ diagnose_low_layers.py           低层缺失成因定量诊断
 │   ├─ plot_case_profiles.py            留出集个例廓线对比
 │   ├─ plot_cv_case_profiles.py         交叉验证个例廓线(空间/时间块)
 │   ├─ plot_cv_summary.py / plot_node_validation.py / plot_profile_agreement_modes.py
-│   ├─ Add_ERA5_SingleLevel_Columns.py / download_era5.py / era5_grib_to_mat.py / server_run_matching.py
+│   ├─ add_era5_single_level_columns.py / download_era5.py / era5_grib_to_mat.py / server_run_matching.py
 │   ├─ matlab/                          历史 MATLAB 工具
 │   └─ legacy/                          旧版脚本(归档)
 ├─ docs/                    方法与背景文档
 │   ├─ ACDL_ERA5_FromScratch_Matching_Strategy.md   匹配策略
 │   ├─ ACDL_Data_Cleaning_and_QC_Guidelines.md      数据清洗与 QC 规范
-│   ├─ Train_ACDL_ERA5_MatchV2_README.md            训练脚本详细说明
+│   ├─ train_acdl_era5_match_v2_README.md            训练脚本详细说明
 │   ├─ 优化路线讨论.md                               优化路线讨论稿(Step 0–5)
 │   └─ legacy_figures/ + 历史资料(pptx/docx/html)
 ├─ 结果汇总/                 全部实验结果与总结(交差从这里拿)
@@ -41,11 +41,11 @@
 
 ```bash
 # 1) 匹配(垂直坐标二选一: asl=固定气压层(历史) / agl=离地高度(推荐))
-.venv/Scripts/python.exe scripts/Match_ACDL_ERA5_FromScratch.py \
+.venv/Scripts/python.exe scripts/match_acdl_era5_from_scratch.py \
     --case 5 --vertical agl --out-dir D:/matchdata_agl_case5
 
 # 2) 训练(abs 目标, 20% 留出;加 --cv 跑空间/时间块交叉验证)
-.venv/Scripts/python.exe scripts/Train_ACDL_ERA5_MatchV2.py \
+.venv/Scripts/python.exe scripts/train_acdl_era5_match_v2.py \
     --match-dir D:/matchdata_agl_case5 --out-dir 结果汇总/runs/<实验名> --tag <TAG>
 
 # 3) 评估(四指标 + 图, 不重训)

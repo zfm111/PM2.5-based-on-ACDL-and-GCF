@@ -31,7 +31,7 @@ for _s in (sys.stdout, sys.stderr):
 
 import numpy as np
 
-import Train_ACDL_ERA5_MatchV2 as T2
+import train_acdl_era5_match_v2 as T2
 
 AGL_DIR = "D:/matchdata_agl_case5"
 RUN = Path("结果汇总/runs/train_agl_b0")

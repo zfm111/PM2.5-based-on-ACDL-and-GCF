@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Plot_Training_Results.py — 从训练产物重画图(不需要重训)
+plot_training_results.py — 从训练产物重画图(不需要重训)
 
 与训练脚本完全解耦:只读 <RUN_DIR>/results/ 下的落盘文件,调用 acdl_plotting.py 出图。
 改配色、改标题、改采样点数、加图都不用重跑 20 分钟的训练。
@@ -17,13 +17,13 @@ Plot_Training_Results.py — 从训练产物重画图(不需要重训)
 
 用法
   # 全部图(所有 tag)
-  python Plot_Training_Results.py --run-dir ./train_fixed_case5_abs
+  python plot_training_results.py --run-dir ./train_fixed_case5_abs
 
   # 只画某几张 / 某个 tag
-  python Plot_Training_Results.py --run-dir ./train_fixed_case5_frac --plots gcf --tags Holdout
+  python plot_training_results.py --run-dir ./train_fixed_case5_frac --plots gcf --tags Holdout
 
   # 出一张把多口径放一起的对比图(读同一 run-dir 下的所有 tag)
-  python Plot_Training_Results.py --run-dir ./train_fixed_case5_abs --plots per_layer --compare
+  python plot_training_results.py --run-dir ./train_fixed_case5_abs --plots per_layer --compare
 
 依赖:numpy, matplotlib
 """

@@ -73,7 +73,7 @@ CONFIG = {
     "ACDL_DIR": r"D:/ACDL/Data/ACDL/ProfileMat",
     "ACDL_PREFIX": "ACDL11_",
 
-    # 匹配口径 —— 必须与 Match_ACDL_ERA5_FromScratch.py 一致
+    # 匹配口径 —— 必须与 match_acdl_era5_from_scratch.py 一致
     "GRID_RES": 0.25,        # ERA5 节点间距(度)
     "TIME_TOL_MIN": 30.0,    # 时间窗(分钟)
     "N_BIN": 1291,           # ACDL 原始廓线层数

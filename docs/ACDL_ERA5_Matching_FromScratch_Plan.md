@@ -35,9 +35,9 @@
 
 ### 2.4 ERA5 single level 0.25° 下载不动
 - geopotential / BLH / TCWV 的下载与转换**暂不修改**;是否作为 f1 输入(如 BLH)后续再定。本匹配**不使用** single-level 数据(地表下界改由 ACDL 自带 `DEM_Surface_Elevation` 提供,见 §3/§4.3)。
-- **2026-09-16 更新(后处理接入,不改匹配本体)**:已经用 [Add_ERA5_SingleLevel_Columns.py](Add_ERA5_SingleLevel_Columns.py) 把 **`BLH_m` / `TCWV_kgm2` / `Z_sfc_m`(地形高度)** 按 (0.25° 格点, 整点)**精确追加**到匹配产物的末尾(132 → **135 列**),供训练使用。实测 205,349 行**零未命中、零 NaN**。
+- **2026-09-16 更新(后处理接入,不改匹配本体)**:已经用 [add_era5_single_level_columns.py](add_era5_single_level_columns.py) 把 **`BLH_m` / `TCWV_kgm2` / `Z_sfc_m`(地形高度)** 按 (0.25° 格点, 整点)**精确追加**到匹配产物的末尾(132 → **135 列**),供训练使用。实测 205,349 行**零未命中、零 NaN**。
   - `Z_sfc_m` 还用于**修正形状/GCF 里的 `L00` 厚度**(Δz₀ = H_k00 − 地形),取代原先 `SURF_M=0` 的近似;
-  - 细节见 [ACDL_ERA5_FromScratch_Matching_Strategy.md](ACDL_ERA5_FromScratch_Matching_Strategy.md) §5.0.1 与 [Train_ACDL_ERA5_MatchV2_README.md](Train_ACDL_ERA5_MatchV2_README.md);
+  - 细节见 [ACDL_ERA5_FromScratch_Matching_Strategy.md](ACDL_ERA5_FromScratch_Matching_Strategy.md) §5.0.1 与 [train_acdl_era5_match_v2_README.md](train_acdl_era5_match_v2_README.md);
   - **下一步候选**:把 **10 m 风 u/v、垂直速度**也接进来(形状/输送的关键驱动),那一步很可能需要动匹配本体或另取 ERA5-Land 0.1° 数据。
 
 ## 3. 数据输入
@@ -80,7 +80,7 @@
 - **待替换基线**:`Main_ACDL_ERA5_Match.m`(其 ACDL 读取、时间换算、足印聚合逻辑可移植)。
 - **过渡产物退役**:`Enrich_ACDL_ERA5_Vertical.py` 与 `ACDL_ERA5_Matched_*_enhanced.mat`(其"插到 1291 层 + Land sp/z"路线被本文取代;仅可作对照)。
 - **可复用件**:ACDL .mat 解码、`#refs#`/VarNames 与 hdf5storage v7.3 写盘、球面 KDTree、ERA5 pressure-level .mat 读取(4D + Level)。
-- **文档现状**:匹配/输出/QC 的现行口径统一在 [ACDL_ERA5_FromScratch_Matching_Strategy.md](ACDL_ERA5_FromScratch_Matching_Strategy.md);训练侧在 [Train_ACDL_ERA5_MatchV2_README.md](Train_ACDL_ERA5_MatchV2_README.md);产品级规则在 [ACDL_Data_Cleaning_and_QC_Guidelines.md](ACDL_Data_Cleaning_and_QC_Guidelines.md)。旧文档已删除。
+- **文档现状**:匹配/输出/QC 的现行口径统一在 [ACDL_ERA5_FromScratch_Matching_Strategy.md](ACDL_ERA5_FromScratch_Matching_Strategy.md);训练侧在 [train_acdl_era5_match_v2_README.md](train_acdl_era5_match_v2_README.md);产品级规则在 [ACDL_Data_Cleaning_and_QC_Guidelines.md](ACDL_Data_Cleaning_and_QC_Guidelines.md)。旧文档已删除。
 
 ## 7. 剩余待定项(实现前需定)
 
@@ -104,7 +104,7 @@
 
 ## 10. QC 实现(决策记录;实现细节见策略文档)
 
-脚本:[Match_ACDL_ERA5_FromScratch.py](Match_ACDL_ERA5_FromScratch.py);对齐检查:[Check_ACPro_ACLay_Alignment.py](Check_ACPro_ACLay_Alignment.py)。
+脚本:[match_acdl_era5_from_scratch.py](match_acdl_era5_from_scratch.py);对齐检查:[Check_ACPro_ACLay_Alignment.py](Check_ACPro_ACLay_Alignment.py)。
 
 > **本节只记录"为什么这样定";逐 bin 判据、五种 Case 的完整定义与输出列布局,统一以
 > [ACDL_ERA5_FromScratch_Matching_Strategy.md](ACDL_ERA5_FromScratch_Matching_Strategy.md) §4 与 §5 为准。**
@@ -121,7 +121,7 @@
 
 ## 11. v3 已实现(2026-09-21):单层特征并入匹配本体
 
-**结果**:已在 [Match_ACDL_ERA5_FromScratch.py](Match_ACDL_ERA5_FromScratch.py) 内实现 —— 匹配时新增单层月度读取(`Era5SingleLevel`),按天预取所需时次,在每行末尾直接写出三列。**不再需要单独脚本**([Add_ERA5_SingleLevel_Columns.py](Add_ERA5_SingleLevel_Columns.py) 保留,仅供旧的 132 列产物后补)。
+**结果**:已在 [match_acdl_era5_from_scratch.py](match_acdl_era5_from_scratch.py) 内实现 —— 匹配时新增单层月度读取(`Era5SingleLevel`),按天预取所需时次,在每行末尾直接写出三列。**不再需要单独脚本**([add_era5_single_level_columns.py](add_era5_single_level_columns.py) 保留,仅供旧的 132 列产物后补)。
 
 **已定范围(用户拍板)**
 1. **只并入现有三项**:`BLH`(边界层高度)、`TCWV`(整层水汽)、`Z_sfc`(地表位势/g₀ = 地形高度);

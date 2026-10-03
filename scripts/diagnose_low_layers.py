@@ -5,7 +5,7 @@ diagnose_low_layers.py — 低层(L00-L05) Ext_mean 缺失成因定量诊断
 
 三类候选机制(《优化路线讨论.md》后续跟进·方向1):
   ① 几何:ERA5 气压层层高以海拔为基准,段边界 = [min(surf,H0), H0, H1, ...]
-     (Match_ACDL_ERA5_FromScratch.py:558-560)。DEM ≥ 段顶 → 整段在地下/为空 → 必 NaN;
+     (match_acdl_era5_from_scratch.py:558-560)。DEM ≥ 段顶 → 整段在地下/为空 → 必 NaN;
      逐 bin 还有 above_surf 剔除(:630,:821-824)。
   ② 云 QC:case4 对厚云下方整段丢弃 + 薄云下 1km 缓冲(:825-836);case5 绕开云规则。
   ③ 其他:消光超界 [0,1.25]、CAD 不确定带(-20,20)、ACDL 产品本身 NaN。
@@ -40,7 +40,7 @@ for _s in (sys.stdout, sys.stderr):
 
 import numpy as np
 
-import Train_ACDL_ERA5_MatchV2 as T2
+import train_acdl_era5_match_v2 as T2
 
 CASE5_DIR = "D:/matchdata_fixed_case5"
 CASE4_DIR = "D:/matchdata_fixed_case4"

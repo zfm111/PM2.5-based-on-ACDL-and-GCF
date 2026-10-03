@@ -70,7 +70,7 @@ def band_of(mid_km: np.ndarray) -> np.ndarray:
 # ============================================================
 def reconstruct_dz(run_dir: Path, tag: str, match_dir: str, seed: int, holdout: float,
                    y_true: np.ndarray):
-    import Train_ACDL_ERA5_MatchV2 as T2
+    import train_acdl_era5_match_v2 as T2
     cfg = dict(T2.CONFIG)
     cfg["MATCH_DIR"] = match_dir
     data = T2.load_matched_dir(Path(match_dir), cfg["MATCH_GLOB"], cfg["STRUCT"],

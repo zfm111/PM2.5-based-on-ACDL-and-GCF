@@ -6,7 +6,7 @@
 >
 > 本文只讲"为什么"和"边界";**实现细节**见
 > [ACDL_ERA5_FromScratch_Matching_Strategy.md](ACDL_ERA5_FromScratch_Matching_Strategy.md)(匹配与列布局)、
-> [Train_ACDL_ERA5_MatchV2_README.md](Train_ACDL_ERA5_MatchV2_README.md)(训练)。
+> [train_acdl_era5_match_v2_README.md](train_acdl_era5_match_v2_README.md)(训练)。
 
 ---
 

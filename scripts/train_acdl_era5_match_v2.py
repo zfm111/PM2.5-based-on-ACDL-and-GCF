@@ -1,10 +1,10 @@
 """
-Train_ACDL_ERA5_MatchV2.py
+train_acdl_era5_match_v2.py
 ============================================================
 训练脚本:用 MatchV2 匹配样本(ACDL×ERA5 降采样)训练"时空注意力"网络,
 由 ERA5 廓线特征预测 ACDL 32 个 ERA5 层段的平均消光。
 
-数据来源:Match_ACDL_ERA5_FromScratch.py 的产物
+数据来源:match_acdl_era5_from_scratch.py 的产物
   <MATCH_DIR>/ACDL_ERA5_MatchV2_YYYYMMDD.mat (struct MatchV2)
   - lite 132 列(默认):0-3 标识 | 4-35 H_k* | 36-67 T_k* | 68-99 RH_k* | 100-131 Ext_mean_L*
   - full 264 列(--with-stats 产物):前 132 列同上,后续为统计列(本脚本不使用)
@@ -35,11 +35,11 @@ Train_ACDL_ERA5_MatchV2.py
 依赖:numpy, h5py, torch, scikit-learn(绘图可选 matplotlib)
 
 运行(默认:只跑一次 20% 随机留出训练,直接给逐层 R²;CV 与全量模型需显式开启):
-  python Train_ACDL_ERA5_MatchV2.py --match-dir /path/Matchoutput --out-dir ./train_out
-  python Train_ACDL_ERA5_MatchV2.py ... --holdout 0.3 --epochs 60      # 调留出比例/轮数
-  python Train_ACDL_ERA5_MatchV2.py ... --cv                          # 加跑空间块+时间块 CV(慢)
-  python Train_ACDL_ERA5_MatchV2.py ... --final                       # 加训全量模型并存 model_final.pt
-  python Train_ACDL_ERA5_MatchV2.py --selftest                        # 合成数据自检(不需真实数据)
+  python train_acdl_era5_match_v2.py --match-dir /path/Matchoutput --out-dir ./train_out
+  python train_acdl_era5_match_v2.py ... --holdout 0.3 --epochs 60      # 调留出比例/轮数
+  python train_acdl_era5_match_v2.py ... --cv                          # 加跑空间块+时间块 CV(慢)
+  python train_acdl_era5_match_v2.py ... --final                       # 加训全量模型并存 model_final.pt
+  python train_acdl_era5_match_v2.py --selftest                        # 合成数据自检(不需真实数据)
 ============================================================
 """
 
@@ -65,7 +65,7 @@ import torch.nn.functional as F
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 from sklearn.preprocessing import StandardScaler
 
-# 绘图统一放在独立模块(与训练解耦;事后可用 Plot_Training_Results.py 重画)
+# 绘图统一放在独立模块(与训练解耦;事后可用 plot_training_results.py 重画)
 from acdl_plotting import plot_per_layer_r2, plot_gcf_scatter
 
 
@@ -86,7 +86,7 @@ CONFIG = {
     "COL_H0": 4, "N_LEVEL": 32,               # H/T/RH 各 32 列
     "COL_YM0": 100,                            # Ext_mean 起始列
 
-    # 由 Add_ERA5_SingleLevel_Columns.py 追加的额外列(按列名读取,不写死列号)
+    # 由 add_era5_single_level_columns.py 追加的额外列(按列名读取,不写死列号)
     "ADD_COLS": ["BLH_m", "TCWV_kgm2", "Z_sfc_m"],   # 默认启用(135 列产物);置 [] 可关闭
     "ADD_COL_ALIASES": {"blh": "BLH_m", "tcwv": "TCWV_kgm2", "zsfc": "Z_sfc_m"},
     "ZSFC_COL": "Z_sfc_m",                     # 若存在:用于修正 L00 厚度(地表高度)
@@ -690,7 +690,7 @@ def run_fold(X, T: dict, tr_idx, te_idx, fold_name: str, cfg: dict, verbose: boo
     met["_gcf_pred"] = gcf_pred[ok_g]
     met["_gcf_true_out"] = gcf_true[ok_all & ~trained]      # 可评但没训过的那批(散点图画灰)
     met["_gcf_pred_out"] = gcf_pred[ok_all & ~trained]
-    # 完整预测/真值廓线 + 测试样本坐标 → 落盘后可用 Plot_Training_Results.py 任意重画
+    # 完整预测/真值廓线 + 测试样本坐标 → 落盘后可用 plot_training_results.py 任意重画
     met["_y_true"] = np.asarray(T["y_abs"][te_idx], dtype=np.float32)
     met["_y_pred"] = np.asarray(sigma_hat, dtype=np.float32)
     met["_lon"] = np.asarray(X[te_idx, cfg["COL_LON"]], dtype=np.float64)
@@ -833,7 +833,7 @@ def save_predictions(results: list[dict], tag: str, out_dir: Path, geom=None) ->
     p.parent.mkdir(parents=True, exist_ok=True)
     np.savez_compressed(p, **payload)
     print(f"  预测值已落盘: {p}  ({p.stat().st_size/1e6:.1f} MB)"
-          f"  → 可用 Plot_Training_Results.py 重画")
+          f"  → 可用 plot_training_results.py 重画")
     return p
 
 
@@ -888,7 +888,7 @@ def summarize(results: list[dict], tag: str, out_dir: Path, geom=None, plots: bo
 
     if not plots:
         print(f"  (--no-plots:跳过出图;以后可运行 "
-              f"python Plot_Training_Results.py --run-dir {out_dir} --tags {tag})")
+              f"python plot_training_results.py --run-dir {out_dir} --tags {tag})")
         return {"R2_global_mean": float(np.nanmean(r2g)), "R2_global_std": float(np.nanstd(r2g)),
                 "RMSE_global_mean": float(np.nanmean(rmg)), "MAE_global_mean": float(np.nanmean(mag)),
                 "GCF_R2_mean": float(np.nanmean(gcf_r2)) if gcf_r2.size else float("nan"),
@@ -1172,7 +1172,7 @@ if __name__ == "__main__":
     ap.add_argument("--seed", type=int, default=None)
     ap.add_argument("--limit-days", type=int, default=None, help="仅用前 N 天数据(快速试跑)")
     ap.add_argument("--add-cols", default=None,
-                    help="额外列(逗号分隔;短名 blh,tcwv,zsfc 或精确列名),需先用 Add_ERA5_SingleLevel_Columns.py 追加")
+                    help="额外列(逗号分隔;短名 blh,tcwv,zsfc 或精确列名),需先用 add_era5_single_level_columns.py 追加")
     ap.add_argument("--list-cols", action="store_true", help="打印匹配文件的列名后退出")
     ap.add_argument("--target", choices=("abs", "frac"), default=None,
                     help="目标:abs=逐层绝对消光(默认)/ frac=厚度加权逐层占比(只学形状)")
@@ -1191,7 +1191,7 @@ if __name__ == "__main__":
     ap.add_argument("--final", action="store_true",
                     help="额外用全量数据训练并保存 model_final.pt(默认关闭)")
     ap.add_argument("--no-plots", action="store_true",
-                    help="不出图(只落盘 predictions_*.npz);事后用 Plot_Training_Results.py 重画")
+                    help="不出图(只落盘 predictions_*.npz);事后用 plot_training_results.py 重画")
     # ---- 优化路线 Step 2/3 开关 ----
     ap.add_argument("--w-profile", choices=("none", "decay", "hard5km"), default=None,
                     help="损失高度权重: none=全层等权(基线) / decay=低层加权 exp(-层底/τ) / hard5km=仅层底<5km 计损失(输出仍32层)")

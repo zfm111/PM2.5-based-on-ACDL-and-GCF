@@ -24,7 +24,7 @@ for _s in (sys.stdout, sys.stderr):
 
 import numpy as np
 
-import Train_ACDL_ERA5_MatchV2 as T2
+import train_acdl_era5_match_v2 as T2
 
 ASL_DIR = "D:/matchdata_fixed_case5"
 AGL_DIR = "D:/matchdata_agl_case5"

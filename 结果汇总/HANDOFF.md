@@ -18,7 +18,7 @@ OD |rel| 25.0→41.3→40.1；Gfrac 57.0→35.4→35.6；ODslope 0.733→0.348�
 
 - **任务**：B0-AGL 交叉验证（空间 3×3 留一 9 折 + 时间块 4 折，共 13 折完整训练）
 - **命令**：
-  `.venv/Scripts/python.exe scripts/Train_ACDL_ERA5_MatchV2.py --match-dir D:/matchdata_agl_case5 --out-dir 结果汇总/runs/train_agl_b0_cv --tag CV --cv --holdout 0`
+  `.venv/Scripts/python.exe scripts/train_acdl_era5_match_v2.py --match-dir D:/matchdata_agl_case5 --out-dir 结果汇总/runs/train_agl_b0_cv --tag CV --cv --holdout 0`
 - **日志**：`结果汇总/logs/agl_train_cv.log`（PYTHONUNBUFFERED=1，实时可查；结尾出现 `[EXIT 0]` = 正常完成）
 - **预计时长**：5–7.5 小时（CPU）；每折日志形如 `[Spatial(1,1)] ep... `
 - **完成后待办**：用 `scripts/evaluate_bench.py --run-dir 结果汇总/runs/train_agl_b0_cv --tag Spatial_CV / Temporal_CV` 分别评估，与 holdout 数字并排对比（重点：低层 nMAE 方向是否保持 ~58% 量级、GCF 改善是否保持），写进 experiments.md
@@ -45,7 +45,7 @@ OD |rel| 25.0→41.3→40.1；Gfrac 57.0→35.4→35.6；ODslope 0.733→0.348�
 ## 4. 已知待办与候选方向（按性价比）
 
 1. CV 完成后的评估对比（见上）
-2. L00 加厚至 0–100 m（改 `scripts/Match_ACDL_ERA5_FromScratch.py` 的 `AGL_EDGES_KM` 一处 + 2h 重匹配，预计 L00→~73%）
+2. L00 加厚至 0–100 m（改 `scripts/match_acdl_era5_from_scratch.py` 的 `AGL_EDGES_KM` 一处 + 2h 重匹配，预计 L00→~73%）
 3. ERA5-Land 2t/2d/sp 锚点替换递减率外推（数据已在 D:/era5_data/era5_land，schema 不变）
 4. `--with-stats` 重匹配归因 L00 残余缺失（产品侧 fill/超界占比）
 5. 信息量升级：接 ERA5 风场 u/v 或 AOD（治 slope<1 尾部压缩的根）

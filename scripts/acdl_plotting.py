@@ -3,8 +3,8 @@ acdl_plotting.py — 训练结果的绘图函数(与训练解耦)
 
 这里只做"读数据 → 出图",不含任何训练逻辑、不依赖 torch。
 被两边共用:
-  - Train_ACDL_ERA5_MatchV2.py 训练结束时直接调用(可选,`--no-plots` 关闭)
-  - Plot_Training_Results.py   事后从落盘产物重画(**不用重训**)
+  - train_acdl_era5_match_v2.py 训练结束时直接调用(可选,`--no-plots` 关闭)
+  - plot_training_results.py   事后从落盘产物重画(**不用重训**)
 
 坐标约定
   - 逐层 R² 图:y 轴 = 高度(km),右次轴 = 近似气压(hPa);x 轴 = R²

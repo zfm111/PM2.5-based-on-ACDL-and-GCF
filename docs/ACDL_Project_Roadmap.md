@@ -1,7 +1,7 @@
 # ACDL × ERA5 项目后续计划(2026-09-21 版)
 
 > 本文是**项目级路线图**:现状盘点 → 关键判断 → 分阶段计划 → 里程碑与判据 → 风险。
-> 单项技术细节见:[f1 动机](ACDL_f1_Motivation_and_Scope.md)、[匹配策略](ACDL_ERA5_FromScratch_Matching_Strategy.md)、[设计与 v3](ACDL_ERA5_Matching_FromScratch_Plan.md)、[训练说明](Train_ACDL_ERA5_MatchV2_README.md)、[清洗规则](ACDL_Data_Cleaning_and_QC_Guidelines.md)。
+> 单项技术细节见:[f1 动机](ACDL_f1_Motivation_and_Scope.md)、[匹配策略](ACDL_ERA5_FromScratch_Matching_Strategy.md)、[设计与 v3](ACDL_ERA5_Matching_FromScratch_Plan.md)、[训练说明](train_acdl_era5_match_v2_README.md)、[清洗规则](ACDL_Data_Cleaning_and_QC_Guidelines.md)。
 
 ---
 
@@ -73,7 +73,7 @@ Stage 3: f2: AOD + GCF + 地表气象 → 地面 PM2.5  ← 最终目标
 | 0.3 | **多种子**:`--seed 0,1,2` 跑 A/B | 均值 ± 标准差 | 差值 > 1σ 才算"有用" |
 | 0.4 | **逐层有效数 + 分高度带汇总** | 哪些层几乎无监督 | 明确评估范围 |
 
-**实现**:在 [Train_ACDL_ERA5_MatchV2.py](Train_ACDL_ERA5_MatchV2.py) 加 `--baseline` / `--features geoonly|met|full` / `--seeds` 三个开关 + 一个汇总表输出。
+**实现**:在 [train_acdl_era5_match_v2.py](train_acdl_era5_match_v2.py) 加 `--baseline` / `--features geoonly|met|full` / `--seeds` 三个开关 + 一个汇总表输出。
 
 ### 阶段 1:判定实验 —— f1 值不值得继续(1–2 周)
 

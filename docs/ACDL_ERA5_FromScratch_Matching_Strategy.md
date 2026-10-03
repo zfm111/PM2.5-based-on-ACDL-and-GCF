@@ -1,8 +1,8 @@
 # ACDL × ERA5 从头匹配策略(当前实现版,2026-09-09)
 
-> 本文件描述**当前代码实际执行**的匹配策略(脚本 [Match_ACDL_ERA5_FromScratch.py](Match_ACDL_ERA5_FromScratch.py))。
+> 本文件描述**当前代码实际执行**的匹配策略(脚本 [match_acdl_era5_from_scratch.py](match_acdl_era5_from_scratch.py))。
 > 取代早期的"追加式增强"口径与相关设计稿(旧文档已删除)。
-> 训练侧说明见 [Train_ACDL_ERA5_MatchV2_README.md](Train_ACDL_ERA5_MatchV2_README.md);产品级清洗规则见 [ACDL_Data_Cleaning_and_QC_Guidelines.md](ACDL_Data_Cleaning_and_QC_Guidelines.md);**研究动机(f1/GCF 的定位)见 [ACDL_f1_Motivation_and_Scope.md](ACDL_f1_Motivation_and_Scope.md)**。
+> 训练侧说明见 [train_acdl_era5_match_v2_README.md](train_acdl_era5_match_v2_README.md);产品级清洗规则见 [ACDL_Data_Cleaning_and_QC_Guidelines.md](ACDL_Data_Cleaning_and_QC_Guidelines.md);**研究动机(f1/GCF 的定位)见 [ACDL_f1_Motivation_and_Scope.md](ACDL_f1_Motivation_and_Scope.md)**。
 
 ---
 
@@ -110,11 +110,11 @@ below_surf = 高度 < 该廓线 DEM_Surface_Elevation
 匹配时直接读取 ERA5 单层场(0.25°,与气压层**同网格同时次**),在每行末尾写出三列:
 
 ```bash
-python Match_ACDL_ERA5_FromScratch.py --start ... --end ...        # 默认写出 135 列
-python Match_ACDL_ERA5_FromScratch.py --no-super-levels ...        # 关闭 → 132 列
-python Match_ACDL_ERA5_FromScratch.py --super-levels blh,tcwv ...  # 只并其中几列
+python match_acdl_era5_from_scratch.py --start ... --end ...        # 默认写出 135 列
+python match_acdl_era5_from_scratch.py --no-super-levels ...        # 关闭 → 132 列
+python match_acdl_era5_from_scratch.py --super-levels blh,tcwv ...  # 只并其中几列
 ```
-> 旧产物(132 列)可用 [Add_ERA5_SingleLevel_Columns.py](Add_ERA5_SingleLevel_Columns.py) 后补;**新匹配无需该脚本**。
+> 旧产物(132 列)可用 [add_era5_single_level_columns.py](add_era5_single_level_columns.py) 后补;**新匹配无需该脚本**。
 | 追加列 | 来源(0.25° 单层,逐小时) | 单位 | 用途 |
 |---|---|---|---|
 | `BLH_m` | `boundary_layer_height` | m | **边界层高度**:近地面气溶胶稀释/堆积,形状与 GCF 的关键驱动 |
@@ -123,7 +123,7 @@ python Match_ACDL_ERA5_FromScratch.py --super-levels blh,tcwv ...  # 只并其�
 
 - 对齐方式:**按 (0.25° 格点, 整点) 精确查表**(匹配产物存的 `ERA5_Lon/Lat` 就是格点值、`ERA5_Time` 就是整点),实测 205,349 行**零未命中、零 NaN**;
 - 训练时用 `--add-cols blh,tcwv,zsfc` 启用(已默认写在训练脚本 `CONFIG["ADD_COLS"]`),三者作为**独立 token** 进入网络;**与匹配内联写出完全等价**(已回归验证:135 列逐值一致);
-- 详见 [Train_ACDL_ERA5_MatchV2_README.md](Train_ACDL_ERA5_MatchV2_README.md) §2/§3。
+- 详见 [train_acdl_era5_match_v2_README.md](train_acdl_era5_match_v2_README.md) §2/§3。
 
 > **v3(计划中)**:这一步将被**并入匹配合体** —— 新增脚本在匹配时直接读 ERA5 单层(0.25°,同网格同时次)写出这三列,v3 与 v2 并存、互为校验。
 
@@ -170,10 +170,10 @@ valid = Data[:, cols("Ext_valid_L")]             # 掩膜/加权用(仅 --with-s
 ## 7. 运行
 
 ```bash
-python Match_ACDL_ERA5_FromScratch.py --start 20220601 --end 20220630      # 默认 Case 4
-python Match_ACDL_ERA5_FromScratch.py --case 1 ...                        # 严格
-python Match_ACDL_ERA5_FromScratch.py --dry-run ...                       # 只统计不写盘
-python Match_ACDL_ERA5_FromScratch.py --selftest                          # 离线自检
+python match_acdl_era5_from_scratch.py --start 20220601 --end 20220630      # 默认 Case 4
+python match_acdl_era5_from_scratch.py --case 1 ...                        # 严格
+python match_acdl_era5_from_scratch.py --dry-run ...                       # 只统计不写盘
+python match_acdl_era5_from_scratch.py --selftest                          # 离线自检
 ```
 依赖:`numpy, scipy, h5py, hdf5storage`(建议在 `era5_work` 环境)。
 关键配置集中在文件顶部 `CONFIG`(路径、`TIME_TOL_MIN`、`EXT_MIN/MAX`、`CAD_*`、`COV_MIN`、`QC_CASE`、`CLOUD_*`)。
@@ -184,7 +184,7 @@ python Match_ACDL_ERA5_FromScratch.py --selftest                          # 离�
 
 | 文件 | 角色 |
 |---|---|
-| [Match_ACDL_ERA5_FromScratch.py](Match_ACDL_ERA5_FromScratch.py) | **本策略的实现** |
+| [match_acdl_era5_from_scratch.py](match_acdl_era5_from_scratch.py) | **本策略的实现** |
 | [Check_ACPro_ACLay_Alignment.py](Check_ACPro_ACLay_Alignment.py) | 字段盘点/ACPro↔ACLay 对齐检查(`--dump` 列全部字段与形状) |
 | [ACDL_Data_Cleaning_and_QC_Guidelines.md](ACDL_Data_Cleaning_and_QC_Guidelines.md) | QC 规则来源(其中 ACLay 相关条目当前暂不可用) |
 | `Enrich_ACDL_ERA5_Vertical.py` / `*_enhanced.mat` | 已废弃的"追加式"过渡方案(该脚本已删除) |

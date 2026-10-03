@@ -58,10 +58,10 @@
 
 ```bash
 # 重匹配(asl 历史口径不受影响)
-.venv/Scripts/python.exe scripts/Match_ACDL_ERA5_FromScratch.py --case 5 --vertical agl \
+.venv/Scripts/python.exe scripts/match_acdl_era5_from_scratch.py --case 5 --vertical agl \
     --out-dir D:/matchdata_agl_case5
 # 重训+评估
-.venv/Scripts/python.exe scripts/Train_ACDL_ERA5_MatchV2.py --match-dir D:/matchdata_agl_case5 \
+.venv/Scripts/python.exe scripts/train_acdl_era5_match_v2.py --match-dir D:/matchdata_agl_case5 \
     --out-dir 结果汇总/runs/train_agl_b0 --tag AGLB0
 .venv/Scripts/python.exe scripts/evaluate_bench.py --run-dir 结果汇总/runs/train_agl_b0 --tag Holdout_AGLB0 --name AGLB0
 ```

@@ -1,7 +1,7 @@
 
 """
-Add_ERA5_SingleLevel_Columns.py   【仅用于旧的 132 列产物】
-  ⚠️ 2026-09-21 起,匹配脚本 Match_ACDL_ERA5_FromScratch.py 已直接写出这三列
+add_era5_single_level_columns.py   【仅用于旧的 132 列产物】
+  ⚠️ 2026-09-21 起,匹配脚本 match_acdl_era5_from_scratch.py 已直接写出这三列
      (SUPER_LEVELS / --super-levels),新匹配无需本脚本;此处保留仅为给已有旧产物后补。
 ============================================================
 把 ERA5 单层场(默认:BLH 边界层高度、TCWV 整层水汽、Z_sfc 地表位势高度)
@@ -21,8 +21,8 @@ Add_ERA5_SingleLevel_Columns.py   【仅用于旧的 132 列产物】
   列 = 原列 + 追加列(顺序见 --vars);VarNames / Level / Meta 同步扩展。
 
 用法(路径已写在脚本顶部 CONFIG 里,直接运行即可):
-  python Add_ERA5_SingleLevel_Columns.py                 # 用 SITE 指定的站点路径
-  python Add_ERA5_SingleLevel_Columns.py --match-dir ...  # 需要时仍可用命令行覆盖
+  python add_era5_single_level_columns.py                 # 用 SITE 指定的站点路径
+  python add_era5_single_level_columns.py --match-dir ...  # 需要时仍可用命令行覆盖
 ============================================================
 """
 

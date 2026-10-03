@@ -1,5 +1,5 @@
 """
-Match_ACDL_ERA5_FromScratch.py
+match_acdl_era5_from_scratch.py
 ============================================================
 按《ACDL_ERA5_FromScratch_Matching_Strategy.md》实现"从头匹配"(口径以该文档为准):
 
@@ -30,7 +30,7 @@ Match_ACDL_ERA5_FromScratch.py
   - 输出 MATLAB v7.3(struct `MatchV2`),列名以 VarNames 为准
 
 依赖:numpy, h5py, scipy, hdf5storage
-运行:python Match_ACDL_ERA5_FromScratch.py [--start YYYYMMDD] [--end YYYYMMDD] [--dry-run] [--selftest]
+运行:python match_acdl_era5_from_scratch.py [--start YYYYMMDD] [--end YYYYMMDD] [--dry-run] [--selftest]
 ============================================================
 """
 

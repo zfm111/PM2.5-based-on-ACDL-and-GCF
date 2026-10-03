@@ -3,7 +3,7 @@
 server_run_matching.py — 服务器端运行 ACDL×ERA5 从头匹配的独立入口
 
 在服务器(ACDL 数据所在机器)上运行:读取 ACDL 原始廓线 + ERA5 气压层 .mat,
-按日产出匹配样本(见 Match_ACDL_ERA5_FromScratch.py)。
+按日产出匹配样本(见 match_acdl_era5_from_scratch.py)。
 
 特点
   - 路径等参数全部走命令行,不用改源码(适合服务器/本地两处共用)
@@ -50,7 +50,7 @@ for _s in (sys.stdout, sys.stderr):
 
 
 HERE = Path(__file__).resolve().parent
-MATCHER = HERE / "Match_ACDL_ERA5_FromScratch.py"
+MATCHER = HERE / "match_acdl_era5_from_scratch.py"
 
 
 # ============================================================
@@ -252,7 +252,7 @@ def run_parallel(args) -> int:
 
 def build_parser() -> argparse.ArgumentParser:
     ap = argparse.ArgumentParser(
-        description="服务器端 ACDL×ERA5 从头匹配入口(调用 Match_ACDL_ERA5_FromScratch.py)")
+        description="服务器端 ACDL×ERA5 从头匹配入口(调用 match_acdl_era5_from_scratch.py)")
     ap.add_argument("--acdl-dir", required=False, help="ACDL .mat 所在目录")
     ap.add_argument("--era5-root", required=False, help="ERA5 产物根目录(含 era5_pressure_levels/)")
     ap.add_argument("--out-dir", required=False, help="输出目录")
