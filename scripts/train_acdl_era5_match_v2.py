@@ -1046,8 +1046,9 @@ def run(args) -> int:
 
     # --- 层几何(平均高度/气压),用于出图与存档 ---
     geom = layer_geometry(X, data.get("level"), cfg=cfg, zsfc=zsfc_eff)
-    cfg["LAYER_TOP_KM"] = (np.asarray(geom[0], dtype=float).tolist()
-                           if geom[0] is not None else None)   # 高度加权/硬截断按层底高度算 w_l
+    # 高度加权/硬截断的层高口径:agl 产物用离地高度(geom[2]),asl 用海拔(geom[0])
+    cfg["LAYER_TOP_KM"] = (np.asarray(geom[2] if vertical == "agl" and geom[2] is not None
+                                      else geom[0], dtype=float).tolist())
     res_dir0 = out_dir / "results"; res_dir0.mkdir(parents=True, exist_ok=True)
     with open(res_dir0 / "layer_geometry.json", "w", encoding="utf-8") as fh:
         json.dump({"height_km": np.asarray(geom[0]).tolist(),
