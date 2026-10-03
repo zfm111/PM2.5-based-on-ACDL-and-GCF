@@ -1,0 +1,117 @@
+==============================================================================
+ACDL×ERA5 MatchV2 训练
+  样本目录: D:/matchdata_agl_case5
+  输出目录: 结果汇总\runs\train_agl_w2
+  设备: cpu  epochs=200 batch=256 lr=0.0003 d_model=128
+  开关: target=abs  w_profile=decay  log_target=False  softplus=False  tag=AGL_W2
+==============================================================================
+[DATA] 找到 30 个匹配文件
+  ACDL_ERA5_MatchV2_20220601.mat: 1361 样本 (+3 列)
+  ACDL_ERA5_MatchV2_20220602.mat: 1007 样本 (+3 列)
+  ACDL_ERA5_MatchV2_20220603.mat: 1346 样本 (+3 列)
+  ACDL_ERA5_MatchV2_20220604.mat: 1243 样本 (+3 列)
+  ACDL_ERA5_MatchV2_20220605.mat: 1256 样本 (+3 列)
+  ACDL_ERA5_MatchV2_20220606.mat: 1341 样本 (+3 列)
+  ACDL_ERA5_MatchV2_20220607.mat: 1182 样本 (+3 列)
+  ACDL_ERA5_MatchV2_20220608.mat: 1354 样本 (+3 列)
+  ACDL_ERA5_MatchV2_20220609.mat: 1184 样本 (+3 列)
+  ACDL_ERA5_MatchV2_20220610.mat: 1277 样本 (+3 列)
+  ACDL_ERA5_MatchV2_20220611.mat: 1219 样本 (+3 列)
+  ACDL_ERA5_MatchV2_20220612.mat: 1102 样本 (+3 列)
+  ACDL_ERA5_MatchV2_20220613.mat: 1327 样本 (+3 列)
+  ACDL_ERA5_MatchV2_20220614.mat: 1199 样本 (+3 列)
+  ACDL_ERA5_MatchV2_20220615.mat: 1365 样本 (+3 列)
+  ACDL_ERA5_MatchV2_20220616.mat: 598 样本 (+3 列)
+  ACDL_ERA5_MatchV2_20220617.mat: 1107 样本 (+3 列)
+  ACDL_ERA5_MatchV2_20220618.mat: 1010 样本 (+3 列)
+  ACDL_ERA5_MatchV2_20220619.mat: 1282 样本 (+3 列)
+  ACDL_ERA5_MatchV2_20220620.mat: 1312 样本 (+3 列)
+  ACDL_ERA5_MatchV2_20220621.mat: 945 样本 (+3 列)
+  ACDL_ERA5_MatchV2_20220622.mat: 1352 样本 (+3 列)
+  ACDL_ERA5_MatchV2_20220623.mat: 427 样本 (+3 列)
+  ACDL_ERA5_MatchV2_20220624.mat: 1358 样本 (+3 列)
+  ACDL_ERA5_MatchV2_20220625.mat: 1192 样本 (+3 列)
+  ACDL_ERA5_MatchV2_20220626.mat: 1140 样本 (+3 列)
+  ACDL_ERA5_MatchV2_20220627.mat: 1293 样本 (+3 列)
+  ACDL_ERA5_MatchV2_20220628.mat: 1037 样本 (+3 列)
+  ACDL_ERA5_MatchV2_20220629.mat: 965 样本 (+3 列)
+  ACDL_ERA5_MatchV2_20220630.mat: 1079 样本 (+3 列)
+[DATA] 合计 34860 样本,X=(34860, 103),y=(34860, 32);目标有效率 91.3%
+[DATA] 额外列 3 个: ['BLH_m', 'TCWV_kgm2', 'Z_sfc_m'];Z_sfc 用于修正 L00 厚度(中位 298 m)
+[DATA] 参与训练 34860 样本;目标有效率 91.3%
+[TARGET] 模式 = abs(绝对消光 σ_l, km⁻¹)
+[VERTICAL] agl 产物:dz/GCF 使用 DEM_m(真实地表) 替代 Z_sfc;DEM_m 中位 228 m
+[COLS] 额外 token 维度 = 3 (['BLH_m', 'TCWV_kgm2', 'Z_sfc_m'])
+
+[TARGET] 目标可行性统计
+  样本 34860;每层有效数(前 8 层): L00=20039 L01=25489 L02=27091 L03=27437 L04=27819 L05=28186 L06=28566 L07=29025
+  每层有效数(后 8 层): L24=34860 L25=34860 L26=34860 L27=34860 L28=34860 L29=34860 L30=34860 L31=34860
+  形状目标可用样本: 34853/34860 (100.0%)   [需 ≥10 层 且 厚度覆盖 ≥50%]
+  柱含量可用样本  : 34860/34860 (100.0%)
+  近地面窗口(层底 < 500 m)包含层: L00, L01, L02, L03, L04, L05, L06
+  近地面完整样本  : 19574/34860 (56.2%)   ← 这些才可用于 GCF 评估
+  GCF(近地面 500 m 占比)分位数: p5=0.023 p25=0.059 p50=0.110 p75=0.219 p95=0.622
+  GCF 均值 0.177 ± 0.185(仅统计近地面完整的样本)
+  柱光学厚度分位数: p5=0.203 p50=0.888 p95=2.183
+
+[HOLDOUT] 随机留出 20%(train=27888, test=6972) —— 注意:随机划分,同格点/同时次样本可能跨集,结果偏乐观
+[W] 低层加权 decay: w=exp(-层底/τ), τ=3.0 km; w(L00)=1.00 w(≈5km)=0.14 w(≈10km)=0.02
+C:\Users\admin\Desktop\Main_ACDL_ERA5_SpatiotemporalAttention_DL\scripts\train_acdl_era5_match_v2.py:415: UserWarning: enable_nested_tensor is True, but self.use_nested_tensor is False because encoder_layer.norm_first was True
+  self.transformer = nn.TransformerEncoder(enc, num_layers=n_layers)
+    [Holdout] ep  1 train=0.3001 val=0.2669  *best
+    [Holdout] ep  2 train=0.2670 val=0.2604  *best
+    [Holdout] ep  3 train=0.2601 val=0.2561  *best
+    [Holdout] ep  5 train=0.2525 val=0.2519  *best
+    [Holdout] ep  6 train=0.2500 val=0.2499  *best
+    [Holdout] ep  7 train=0.2476 val=0.2487  *best
+    [Holdout] ep  8 train=0.2455 val=0.2473  *best
+    [Holdout] ep  9 train=0.2439 val=0.2467  *best
+    [Holdout] ep 10 train=0.2424 val=0.2454  *best
+    [Holdout] ep 11 train=0.2409 val=0.2448  *best
+    [Holdout] ep 12 train=0.2392 val=0.2418  *best
+    [Holdout] ep 13 train=0.2383 val=0.2413  *best
+    [Holdout] ep 15 train=0.2353 val=0.2409  *best
+    [Holdout] ep 16 train=0.2349 val=0.2402  *best
+    [Holdout] ep 17 train=0.2329 val=0.2389  *best
+    [Holdout] ep 18 train=0.2321 val=0.2361  *best
+    [Holdout] ep 20 train=0.2296 val=0.2374
+    [Holdout] ep 23 train=0.2277 val=0.2350  *best
+    [Holdout] ep 26 train=0.2241 val=0.2342  *best
+    [Holdout] ep 27 train=0.2229 val=0.2334  *best
+    [Holdout] ep 28 train=0.2219 val=0.2328  *best
+    [Holdout] ep 30 train=0.2205 val=0.2349
+    [Holdout] ep 32 train=0.2191 val=0.2327  *best
+    [Holdout] ep 33 train=0.2182 val=0.2316  *best
+    [Holdout] ep 34 train=0.2173 val=0.2313  *best
+    [Holdout] ep 36 train=0.2157 val=0.2305  *best
+    [Holdout] ep 38 train=0.2140 val=0.2305  *best
+    [Holdout] ep 40 train=0.2121 val=0.2302  *best
+    [Holdout] ep 41 train=0.2117 val=0.2294  *best
+    [Holdout] ep 46 train=0.2071 val=0.2293  *best
+    [Holdout] ep 48 train=0.2061 val=0.2287  *best
+    [Holdout] ep 50 train=0.2042 val=0.2305
+    [Holdout] ep 56 train=0.2005 val=0.2277  *best
+    [Holdout] ep 60 train=0.1975 val=0.2301
+    [Holdout] ep 67 train=0.1927 val=0.2276  *best
+    [Holdout] ep 69 train=0.1909 val=0.2275  *best
+    [Holdout] ep 70 train=0.1905 val=0.2290
+    [Holdout] ep 80 train=0.1846 val=0.2302
+    [Holdout] 绝对消光: R²=0.4021 RMSE=0.0899 MAE=0.0398  GCF R²=0.571(MAE=0.075, n=3903) (best ep69)
+
+[Holdout_AGL_W2] 折数 1   —— 逐层指标 = 绝对消光 σ(km⁻¹)
+  全局 R²   : 0.4021 ± 0.0000
+  全局 RMSE : 0.0899 ± 0.0000
+  全局 MAE  : 0.0398 ± 0.0000
+  GCF  R²   : 0.5713 ± 0.0000   MAE 0.0753   (n=3903)   ← 只用训练所涉样本
+  逐层 R²(绝对消光;L00=最低层 → L31=最高层):
+    L00= 0.146  L01= 0.183  L02= 0.315  L03= 0.299  L04= 0.295  L05= 0.318  L06= 0.343  L07= 0.360
+    L08= 0.348  L09= 0.306  L10= 0.318  L11= 0.303  L12= 0.316  L13= 0.326  L14= 0.360  L15= 0.366
+    L16= 0.409  L17= 0.397  L18= 0.377  L19= 0.348  L20= 0.353  L21= 0.386  L22= 0.455  L23= 0.401
+    L24= 0.221  L25= 0.470  L26= 0.599  L27= 0.552  L28= 0.419  L29= 0.358  L30= 0.359  L31= 0.168
+  预测值已落盘: 结果汇总\runs\train_agl_w2\results\predictions_Holdout_AGL_W2.npz  (1.8 MB)  → 可用 plot_training_results.py 重画
+  图: 结果汇总\runs\train_agl_w2\plots\per_layer_r2_Holdout_AGL_W2.png
+  图: 结果汇总\runs\train_agl_w2\plots\gcf_scatter_Holdout_AGL_W2.png
+
+[提示] 默认不跑空间/时间 CV 与全量模型;需要时加 --cv(空间+时间 CV)或 --final(全量模型,并存 model_final.pt)
+
+[DONE]

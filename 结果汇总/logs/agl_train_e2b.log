@@ -1,0 +1,171 @@
+==============================================================================
+ACDL×ERA5 MatchV2 训练
+  样本目录: D:/matchdata_agl_case5
+  输出目录: 结果汇总\runs\train_agl_e2b
+  设备: cpu  epochs=200 batch=256 lr=0.0003 d_model=128
+  开关: target=abs  w_profile=none  log_target=True  softplus=False  tag=AGL_E2B
+==============================================================================
+[DATA] 找到 30 个匹配文件
+  ACDL_ERA5_MatchV2_20220601.mat: 1361 样本 (+3 列)
+  ACDL_ERA5_MatchV2_20220602.mat: 1007 样本 (+3 列)
+  ACDL_ERA5_MatchV2_20220603.mat: 1346 样本 (+3 列)
+  ACDL_ERA5_MatchV2_20220604.mat: 1243 样本 (+3 列)
+  ACDL_ERA5_MatchV2_20220605.mat: 1256 样本 (+3 列)
+  ACDL_ERA5_MatchV2_20220606.mat: 1341 样本 (+3 列)
+  ACDL_ERA5_MatchV2_20220607.mat: 1182 样本 (+3 列)
+  ACDL_ERA5_MatchV2_20220608.mat: 1354 样本 (+3 列)
+  ACDL_ERA5_MatchV2_20220609.mat: 1184 样本 (+3 列)
+  ACDL_ERA5_MatchV2_20220610.mat: 1277 样本 (+3 列)
+  ACDL_ERA5_MatchV2_20220611.mat: 1219 样本 (+3 列)
+  ACDL_ERA5_MatchV2_20220612.mat: 1102 样本 (+3 列)
+  ACDL_ERA5_MatchV2_20220613.mat: 1327 样本 (+3 列)
+  ACDL_ERA5_MatchV2_20220614.mat: 1199 样本 (+3 列)
+  ACDL_ERA5_MatchV2_20220615.mat: 1365 样本 (+3 列)
+  ACDL_ERA5_MatchV2_20220616.mat: 598 样本 (+3 列)
+  ACDL_ERA5_MatchV2_20220617.mat: 1107 样本 (+3 列)
+  ACDL_ERA5_MatchV2_20220618.mat: 1010 样本 (+3 列)
+  ACDL_ERA5_MatchV2_20220619.mat: 1282 样本 (+3 列)
+  ACDL_ERA5_MatchV2_20220620.mat: 1312 样本 (+3 列)
+  ACDL_ERA5_MatchV2_20220621.mat: 945 样本 (+3 列)
+  ACDL_ERA5_MatchV2_20220622.mat: 1352 样本 (+3 列)
+  ACDL_ERA5_MatchV2_20220623.mat: 427 样本 (+3 列)
+  ACDL_ERA5_MatchV2_20220624.mat: 1358 样本 (+3 列)
+  ACDL_ERA5_MatchV2_20220625.mat: 1192 样本 (+3 列)
+  ACDL_ERA5_MatchV2_20220626.mat: 1140 样本 (+3 列)
+  ACDL_ERA5_MatchV2_20220627.mat: 1293 样本 (+3 列)
+  ACDL_ERA5_MatchV2_20220628.mat: 1037 样本 (+3 列)
+  ACDL_ERA5_MatchV2_20220629.mat: 965 样本 (+3 列)
+  ACDL_ERA5_MatchV2_20220630.mat: 1079 样本 (+3 列)
+[DATA] 合计 34860 样本,X=(34860, 103),y=(34860, 32);目标有效率 91.3%
+[DATA] 额外列 3 个: ['BLH_m', 'TCWV_kgm2', 'Z_sfc_m'];Z_sfc 用于修正 L00 厚度(中位 298 m)
+[DATA] 参与训练 34860 样本;目标有效率 91.3%
+[TARGET] 模式 = abs(绝对消光 σ_l, km⁻¹)
+[VERTICAL] agl 产物:dz/GCF 使用 DEM_m(真实地表) 替代 Z_sfc;DEM_m 中位 228 m
+[COLS] 额外 token 维度 = 3 (['BLH_m', 'TCWV_kgm2', 'Z_sfc_m'])
+
+[TARGET] 目标可行性统计
+  样本 34860;每层有效数(前 8 层): L00=20039 L01=25489 L02=27091 L03=27437 L04=27819 L05=28186 L06=28566 L07=29025
+  每层有效数(后 8 层): L24=34860 L25=34860 L26=34860 L27=34860 L28=34860 L29=34860 L30=34860 L31=34860
+  形状目标可用样本: 34853/34860 (100.0%)   [需 ≥10 层 且 厚度覆盖 ≥50%]
+  柱含量可用样本  : 34860/34860 (100.0%)
+  近地面窗口(层底 < 500 m)包含层: L00, L01, L02, L03, L04, L05, L06
+  近地面完整样本  : 19574/34860 (56.2%)   ← 这些才可用于 GCF 评估
+  GCF(近地面 500 m 占比)分位数: p5=0.023 p25=0.059 p50=0.110 p75=0.219 p95=0.622
+  GCF 均值 0.177 ± 0.185(仅统计近地面完整的样本)
+  柱光学厚度分位数: p5=0.203 p50=0.888 p95=2.183
+
+[HOLDOUT] 随机留出 20%(train=27888, test=6972) —— 注意:随机划分,同格点/同时次样本可能跨集,结果偏乐观
+[TARGET] log 空间训练: y→ln(clip(y,1e-06)),评估仍还原原空间
+C:\Users\admin\Desktop\Main_ACDL_ERA5_SpatiotemporalAttention_DL\scripts\train_acdl_era5_match_v2.py:415: UserWarning: enable_nested_tensor is True, but self.use_nested_tensor is False because encoder_layer.norm_first was True
+  self.transformer = nn.TransformerEncoder(enc, num_layers=n_layers)
+    [Holdout] ep  1 train=0.2967 val=0.2493  *best
+    [Holdout] ep  2 train=0.2526 val=0.2383  *best
+    [Holdout] ep  3 train=0.2428 val=0.2312  *best
+    [Holdout] ep  4 train=0.2365 val=0.2279  *best
+    [Holdout] ep  5 train=0.2317 val=0.2244  *best
+    [Holdout] ep  6 train=0.2285 val=0.2207  *best
+    [Holdout] ep  7 train=0.2253 val=0.2193  *best
+    [Holdout] ep  8 train=0.2227 val=0.2171  *best
+    [Holdout] ep  9 train=0.2203 val=0.2161  *best
+    [Holdout] ep 10 train=0.2184 val=0.2127  *best
+    [Holdout] ep 11 train=0.2162 val=0.2123  *best
+    [Holdout] ep 12 train=0.2145 val=0.2090  *best
+    [Holdout] ep 13 train=0.2123 val=0.2083  *best
+    [Holdout] ep 14 train=0.2103 val=0.2077  *best
+    [Holdout] ep 15 train=0.2089 val=0.2061  *best
+    [Holdout] ep 16 train=0.2077 val=0.2045  *best
+    [Holdout] ep 17 train=0.2057 val=0.2034  *best
+    [Holdout] ep 18 train=0.2045 val=0.2021  *best
+    [Holdout] ep 20 train=0.2013 val=0.1997  *best
+    [Holdout] ep 22 train=0.1991 val=0.1990  *best
+    [Holdout] ep 23 train=0.1976 val=0.1970  *best
+    [Holdout] ep 24 train=0.1967 val=0.1966  *best
+    [Holdout] ep 25 train=0.1955 val=0.1964  *best
+    [Holdout] ep 26 train=0.1942 val=0.1959  *best
+    [Holdout] ep 27 train=0.1930 val=0.1939  *best
+    [Holdout] ep 28 train=0.1919 val=0.1935  *best
+    [Holdout] ep 29 train=0.1908 val=0.1932  *best
+    [Holdout] ep 30 train=0.1900 val=0.1932
+    [Holdout] ep 31 train=0.1890 val=0.1918  *best
+    [Holdout] ep 32 train=0.1878 val=0.1912  *best
+    [Holdout] ep 33 train=0.1868 val=0.1899  *best
+    [Holdout] ep 35 train=0.1849 val=0.1895  *best
+    [Holdout] ep 36 train=0.1834 val=0.1892  *best
+    [Holdout] ep 37 train=0.1831 val=0.1889  *best
+    [Holdout] ep 38 train=0.1819 val=0.1885  *best
+    [Holdout] ep 39 train=0.1812 val=0.1868  *best
+    [Holdout] ep 40 train=0.1802 val=0.1871
+    [Holdout] ep 41 train=0.1796 val=0.1868  *best
+    [Holdout] ep 43 train=0.1779 val=0.1862  *best
+    [Holdout] ep 44 train=0.1769 val=0.1846  *best
+    [Holdout] ep 45 train=0.1762 val=0.1846  *best
+    [Holdout] ep 46 train=0.1752 val=0.1846  *best
+    [Holdout] ep 47 train=0.1744 val=0.1838  *best
+    [Holdout] ep 48 train=0.1736 val=0.1837  *best
+    [Holdout] ep 49 train=0.1731 val=0.1832  *best
+    [Holdout] ep 50 train=0.1722 val=0.1832  *best
+    [Holdout] ep 51 train=0.1714 val=0.1822  *best
+    [Holdout] ep 52 train=0.1709 val=0.1818  *best
+    [Holdout] ep 54 train=0.1693 val=0.1817  *best
+    [Holdout] ep 55 train=0.1687 val=0.1814  *best
+    [Holdout] ep 56 train=0.1681 val=0.1812  *best
+    [Holdout] ep 57 train=0.1670 val=0.1809  *best
+    [Holdout] ep 58 train=0.1665 val=0.1806  *best
+    [Holdout] ep 59 train=0.1659 val=0.1805  *best
+    [Holdout] ep 60 train=0.1652 val=0.1802  *best
+    [Holdout] ep 61 train=0.1645 val=0.1797  *best
+    [Holdout] ep 62 train=0.1642 val=0.1796  *best
+    [Holdout] ep 63 train=0.1637 val=0.1795  *best
+    [Holdout] ep 65 train=0.1624 val=0.1792  *best
+    [Holdout] ep 66 train=0.1618 val=0.1787  *best
+    [Holdout] ep 67 train=0.1611 val=0.1787  *best
+    [Holdout] ep 68 train=0.1608 val=0.1785  *best
+    [Holdout] ep 69 train=0.1602 val=0.1780  *best
+    [Holdout] ep 70 train=0.1594 val=0.1784
+    [Holdout] ep 71 train=0.1590 val=0.1778  *best
+    [Holdout] ep 73 train=0.1580 val=0.1777  *best
+    [Holdout] ep 74 train=0.1574 val=0.1773  *best
+    [Holdout] ep 75 train=0.1568 val=0.1768  *best
+    [Holdout] ep 78 train=0.1555 val=0.1767  *best
+    [Holdout] ep 80 train=0.1542 val=0.1766  *best
+    [Holdout] ep 82 train=0.1536 val=0.1764  *best
+    [Holdout] ep 83 train=0.1530 val=0.1761  *best
+    [Holdout] ep 85 train=0.1524 val=0.1757  *best
+    [Holdout] ep 86 train=0.1514 val=0.1757  *best
+    [Holdout] ep 88 train=0.1509 val=0.1755  *best
+    [Holdout] ep 90 train=0.1501 val=0.1754  *best
+    [Holdout] ep 92 train=0.1491 val=0.1751  *best
+    [Holdout] ep 94 train=0.1485 val=0.1751  *best
+    [Holdout] ep 95 train=0.1479 val=0.1749  *best
+    [Holdout] ep 97 train=0.1471 val=0.1745  *best
+    [Holdout] ep100 train=0.1459 val=0.1749
+    [Holdout] ep101 train=0.1459 val=0.1745  *best
+    [Holdout] ep110 train=0.1425 val=0.1749
+    [Holdout] ep111 train=0.1426 val=0.1739  *best
+    [Holdout] ep117 train=0.1408 val=0.1738  *best
+    [Holdout] ep120 train=0.1401 val=0.1741
+    [Holdout] ep127 train=0.1384 val=0.1737  *best
+    [Holdout] ep128 train=0.1380 val=0.1734  *best
+    [Holdout] ep130 train=0.1376 val=0.1739
+    [Holdout] ep139 train=0.1357 val=0.1733  *best
+    [Holdout] ep140 train=0.1359 val=0.1738
+    [Holdout] ep150 train=0.1341 val=0.1737
+    [Holdout] 绝对消光: R²=0.4142 RMSE=0.0890 MAE=0.0351  GCF R²=0.595(MAE=0.069, n=3903) (best ep139)
+
+[Holdout_AGL_E2B] 折数 1   —— 逐层指标 = 绝对消光 σ(km⁻¹)
+  全局 R²   : 0.4142 ± 0.0000
+  全局 RMSE : 0.0890 ± 0.0000
+  全局 MAE  : 0.0351 ± 0.0000
+  GCF  R²   : 0.5948 ± 0.0000   MAE 0.0694   (n=3903)   ← 只用训练所涉样本
+  逐层 R²(绝对消光;L00=最低层 → L31=最高层):
+    L00= 0.071  L01= 0.125  L02= 0.258  L03= 0.246  L04= 0.229  L05= 0.259  L06= 0.300  L07= 0.288
+    L08= 0.251  L09= 0.255  L10= 0.296  L11= 0.281  L12= 0.282  L13= 0.338  L14= 0.317  L15= 0.366
+    L16= 0.444  L17= 0.458  L18= 0.468  L19= 0.426  L20= 0.463  L21= 0.546  L22= 0.644  L23= 0.755
+    L24= 0.700  L25= 0.629  L26= 0.720  L27= 0.662  L28= 0.582  L29= 0.521  L30= 0.485  L31= 0.254
+  预测值已落盘: 结果汇总\runs\train_agl_e2b\results\predictions_Holdout_AGL_E2B.npz  (1.8 MB)  → 可用 plot_training_results.py 重画
+  图: 结果汇总\runs\train_agl_e2b\plots\per_layer_r2_Holdout_AGL_E2B.png
+  图: 结果汇总\runs\train_agl_e2b\plots\gcf_scatter_Holdout_AGL_E2B.png
+
+[提示] 默认不跑空间/时间 CV 与全量模型;需要时加 --cv(空间+时间 CV)或 --final(全量模型,并存 model_final.pt)
+
+[DONE]
