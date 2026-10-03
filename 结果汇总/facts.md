@@ -1,7 +1,7 @@
 # Step 0 · 代码事实核实（《优化路线讨论.md》§6 七项）
 
-核实时间：2026-09-28。核实对象：`Train_ACDL_ERA5_MatchV2.py`（demo 分支基线 a744073）、
-`acdl_plotting.py`、`runs/train_fixed_case5_abs/results/predictions_Holdout.npz`（B0 基线，N_test=6972）。
+核实时间：2026-09-28。核实对象：`scripts/Train_ACDL_ERA5_MatchV2.py`（demo 分支基线 a744073）、
+`scripts/acdl_plotting.py`、`runs/train_fixed_case5_abs/results/predictions_Holdout.npz`（B0 基线，N_test=6972）。
 
 | # | 问题 | 结论 |
 |---|------|------|
@@ -15,7 +15,7 @@
 
 ## 逐项细节
 
-**1. 损失等权** — `masked_huber`（Train_ACDL_ERA5_MatchV2.py:410）：`(huber·mask).sum()/mask.sum()`，
+**1. 损失等权** — `masked_huber`（scripts/Train_ACDL_ERA5_MatchV2.py:410）：`(huber·mask).sum()/mask.sum()`，
 无高度权重。注意目标在计损失前已逐层 z-score（`fit_target_scaler`，L401），所以现状等权 =
 "每层相对（标准化）误差等权"，不是"绝对 km⁻¹ 误差等权"。
 
@@ -33,9 +33,9 @@
 气象 96 维压成 1 个 token；注意力池化后 MLP 解码直接输出 32 维。
 **32 层从未作为序列位置参与注意力** → 路线图 A2（垂直序列）在当前结构中完全不存在，Step 4 若启动属新增而非替换。
 
-**5. 对比图同批同掩膜** — `plot_profile_compare`（acdl_plotting.py:187-193）对 obs/pred 用同一逐层掩膜
+**5. 对比图同批同掩膜** — `plot_profile_compare`（scripts/acdl_plotting.py:187-193）对 obs/pred 用同一逐层掩膜
 `isfinite(y_true) & isfinite(y_pred)` 后各自取 25/50/75 分位 → 满足"同批样本同掩膜配对"。
-缺：路线图 §4 要求的对数空间差值曲线 → 评估台 `evaluate_bench.py` 补上。
+缺：路线图 §4 要求的对数空间差值曲线 → 评估台 `scripts/evaluate_bench.py` 补上。
 线性头 y_pred 有 5628/223104 个负值 → E2c（softplus 非负）动机成立。
 
 **6. GCF 分母口径** — 真值 `build_targets` L286-302：分母 = **有效层**积分（缺测层不计入），且要求
@@ -65,10 +65,10 @@ L22 起 ≥99%，L25-L31 = 100%。
 
 ## 附录 · 低层缺失成因定量诊断（2026-09-28，方向1 跟进）
 
-完整分析见《低层缺失诊断.md》与 `diagnose_low_layers.py`。结论：
+完整分析见《低层缺失诊断.md》与 `scripts/diagnose_low_layers.py`。结论：
 
 - **L00–L02 的缺失 91–95% 是硬几何**：ERA5 气压层层高以海拔为基准，段边界 `min(surf,H0)`
-  （Match_ACDL_ERA5_FromScratch.py:558-560），DEM ≥ 段顶 → 段空/全 bin 在地下 → Ext 必 NaN。
+  （scripts/Match_ACDL_ERA5_FromScratch.py:558-560），DEM ≥ 段顶 → 段空/全 bin 在地下 → Ext 必 NaN。
 - 条件有效率：段顶在地上 73–80%，在地下平均 34%（ surf_h 取组内 DEM 均值致边界混合）。
 - 云 QC（case4 vs case5）：case4 目标总有效率仅 10.5%（case5 82.3%）；L00 有效率 0.8% vs 29.2%
   → case5 已回收 ~28pp；**进一步放松 case 口径的空间已不大**（case5 无云规则）。

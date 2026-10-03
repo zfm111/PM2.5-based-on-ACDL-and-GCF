@@ -27,7 +27,7 @@ import Train_ACDL_ERA5_MatchV2 as T2
 
 AGL_DIR = "D:/matchdata_agl_case5"
 RUN_CV = Path("结果汇总/runs/train_agl_b0_cv")
-OUT = Path(__file__).resolve().parent / "结果汇总" / "figures"
+OUT = Path(__file__).resolve().parent.parent / "结果汇总" / "figures"
 C_OBS, C_PRD = "#0C5DA5", "#C44E52"
 
 

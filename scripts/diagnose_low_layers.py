@@ -44,7 +44,7 @@ import Train_ACDL_ERA5_MatchV2 as T2
 
 CASE5_DIR = "D:/matchdata_fixed_case5"
 CASE4_DIR = "D:/matchdata_fixed_case4"
-OUT_DIR = Path(__file__).resolve().parent / "结果汇总"
+OUT_DIR = Path(__file__).resolve().parent.parent / "结果汇总"
 DEM_BANDS = [(0, 120), (120, 370), (370, 650), (650, 1000), (1000, 1500), (1500, 2000), (2000, 6000)]
 DEM_BAND_NAMES = ["<120", "120-370", "370-650", "650-1000", "1000-1500", "1500-2000", ">2000"]
 N_SHOW = 12          # 诊断展示到 L11(低层段)

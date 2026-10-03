@@ -1,7 +1,7 @@
 # 训练脚本说明:ERA5 → ACDL 消光廓线(SpatioTemporalAttention)
 
-> 脚本:[Train_ACDL_ERA5_MatchV2.py](Train_ACDL_ERA5_MatchV2.py)
-> 数据来源:[Match_ACDL_ERA5_FromScratch.py](Match_ACDL_ERA5_FromScratch.py) 产出的 `ACDL_ERA5_MatchV2_YYYYMMDD.mat`
+> 脚本:[scripts/Train_ACDL_ERA5_MatchV2.py](scripts/Train_ACDL_ERA5_MatchV2.py)
+> 数据来源:[scripts/Match_ACDL_ERA5_FromScratch.py](scripts/Match_ACDL_ERA5_FromScratch.py) 产出的 `ACDL_ERA5_MatchV2_YYYYMMDD.mat`
 > 相关:[ACDL_ERA5_FromScratch_Matching_Strategy.md](ACDL_ERA5_FromScratch_Matching_Strategy.md)(匹配口径与列布局)、[ACDL_f1_Motivation_and_Scope.md](ACDL_f1_Motivation_and_Scope.md)(为什么要做 f1)
 
 ---
@@ -123,7 +123,7 @@ X = [ Lon, Lat, sin(hour), cos(hour), sp_x, sp_y, sp_z, H_k00..31, T_k00..31, RH
     └── gcf_scatter_Temporal.png
 ```
 
-> ★ `predictions_*.npz` 是**绘图与训练解耦的关键**:有了它,`Plot_Training_Results.py`
+> ★ `predictions_*.npz` 是**绘图与训练解耦的关键**:有了它,`scripts/Plot_Training_Results.py`
 > 可以在不重训的情况下重画/新增图。旧版本跑出的目录没有这个文件,对应脚本会明确报错提示重跑。
 
 ---
@@ -132,30 +132,30 @@ X = [ Lon, Lat, sin(hour), cos(hour), sp_x, sp_y, sp_z, H_k00..31, T_k00..31, RH
 
 ```bash
 # 本地(项目 .venv 已含 torch/sklearn);默认路径 D:/matchdata_fixed_case5(135 列,自带三列额外特征)
-./.venv/Scripts/python.exe Train_ACDL_ERA5_MatchV2.py --out-dir "./结果汇总/runs/train_out"
+./.venv/Scripts/python.exe scripts/Train_ACDL_ERA5_MatchV2.py --out-dir "./结果汇总/runs/train_out"
 
 # 服务器(后台 + 日志)
-nohup python Train_ACDL_ERA5_MatchV2.py \
+nohup python scripts/Train_ACDL_ERA5_MatchV2.py \
     --match-dir /media/data61/ZhangYi/FangMingZhao/Matchoutput \
     --out-dir  /media/data61/ZhangYi/FangMingZhao/train_out \
     > train_202206.log 2>&1 &
 
 # 匹配产物已自带 BLH/TCWV/地形三列(无需再补);先看有哪些列
-python Train_ACDL_ERA5_MatchV2.py --list-cols
+python scripts/Train_ACDL_ERA5_MatchV2.py --list-cols
 # 若用旧的 132 列产物,先补列再训:
 python Add_ERA5_SingleLevel_Columns.py --match-dir "D:/matchdata"      # → D:/matchdata_plus
 
 # 目标模式(默认 abs = 逐层绝对消光)
-python Train_ACDL_ERA5_MatchV2.py --target abs        # 逐层绝对消光(默认)
-python Train_ACDL_ERA5_MatchV2.py --target frac       # 只学垂直形状
-python Train_ACDL_ERA5_MatchV2.py --req-min-layers 15 --req-cov 0.6   # 收紧样本完整性
-python Train_ACDL_ERA5_MatchV2.py --drop-l00 --gcf-top-m 300          # 排除 L00;GCF 定义改 300 m
+python scripts/Train_ACDL_ERA5_MatchV2.py --target abs        # 逐层绝对消光(默认)
+python scripts/Train_ACDL_ERA5_MatchV2.py --target frac       # 只学垂直形状
+python scripts/Train_ACDL_ERA5_MatchV2.py --req-min-layers 15 --req-cov 0.6   # 收紧样本完整性
+python scripts/Train_ACDL_ERA5_MatchV2.py --drop-l00 --gcf-top-m 300          # 排除 L00;GCF 定义改 300 m
 
 # 快速试跑 / 分步
-python Train_ACDL_ERA5_MatchV2.py --limit-days 3 --epochs 20
-python Train_ACDL_ERA5_MatchV2.py --cv               # 加跑空间块 + 时间块 CV(慢)
-python Train_ACDL_ERA5_MatchV2.py --final            # 加训全量模型并存 model_final.pt
-python Train_ACDL_ERA5_MatchV2.py --selftest         # 合成数据自检(不需真实数据)
+python scripts/Train_ACDL_ERA5_MatchV2.py --limit-days 3 --epochs 20
+python scripts/Train_ACDL_ERA5_MatchV2.py --cv               # 加跑空间块 + 时间块 CV(慢)
+python scripts/Train_ACDL_ERA5_MatchV2.py --final            # 加训全量模型并存 model_final.pt
+python scripts/Train_ACDL_ERA5_MatchV2.py --selftest         # 合成数据自检(不需真实数据)
 ```
 
 常用参数:`--match-dir`、`--out-dir`、`--add-cols`、`--list-cols`、`--target`、`--req-min-layers`、`--req-cov`、`--drop-l00`、`--gcf-top-m`、`--epochs`、`--batch`、`--seed`、`--limit-days`、`--holdout`、`--cv`、`--final`、`--selftest`。
@@ -164,10 +164,10 @@ python Train_ACDL_ERA5_MatchV2.py --selftest         # 合成数据自检(不需
 | 脚本 | 作用 |
 |---|---|
 | [Add_ERA5_SingleLevel_Columns.py](Add_ERA5_SingleLevel_Columns.py) | 【仅旧产物】把 ERA5 单层场追加到 **132 列**的匹配样本(新匹配已自带,无需此步) |
-| [acdl_plotting.py](acdl_plotting.py) | **绘图模块**(与训练解耦,不含 torch):逐层 R²、GCF 散点、廓线密度 |
-| [Plot_Training_Results.py](Plot_Training_Results.py) | **从落盘产物重画所有图,不用重训**:`--run-dir <OUT_DIR> [--plots ...] [--compare]` |
+| [scripts/acdl_plotting.py](scripts/acdl_plotting.py) | **绘图模块**(与训练解耦,不含 torch):逐层 R²、GCF 散点、廓线密度 |
+| [scripts/Plot_Training_Results.py](scripts/Plot_Training_Results.py) | **从落盘产物重画所有图,不用重训**:`--run-dir <OUT_DIR> [--plots ...] [--compare]` |
 
-> 训练与绘图已解耦(2026-09-22):绘图实现全部在 `acdl_plotting.py`;训练结束时会把
+> 训练与绘图已解耦(2026-09-22):绘图实现全部在 `scripts/acdl_plotting.py`;训练结束时会把
 > `results/predictions_<tag>.npz`(**逐层指标 + GCF 观测/预测 + 完整预测/真值廓线 + 测试样本坐标 + 层几何**)
 > 落盘,因此改配色/改标题/加图都不用重跑训练。训练默认仍会调用绘图(方便),
 > 加 `--no-plots` 则只落盘不出图。

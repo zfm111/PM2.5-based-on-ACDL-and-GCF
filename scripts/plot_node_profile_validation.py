@@ -25,7 +25,7 @@ import numpy as np
 
 from plot_cv_case_profiles import join_cv, load_all
 
-OUT = Path(__file__).resolve().parent / "结果汇总" / "figures"
+OUT = Path(__file__).resolve().parent.parent / "结果汇总" / "figures"
 C_OBS, C_PRD = "#0C5DA5", "#C44E52"
 
 

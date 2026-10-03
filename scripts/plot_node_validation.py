@@ -29,7 +29,7 @@ import numpy as np
 from plot_cv_case_profiles import load_all, join_cv
 
 RUN_CV = Path("结果汇总/runs/train_agl_b0_cv")
-OUT = Path(__file__).resolve().parent / "结果汇总" / "figures"
+OUT = Path(__file__).resolve().parent.parent / "结果汇总" / "figures"
 C_OBS, C_PRD = "#0C5DA5", "#C44E52"
 
 

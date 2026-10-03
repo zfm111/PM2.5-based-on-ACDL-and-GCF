@@ -58,18 +58,18 @@
 
 ```bash
 # 重匹配(asl 历史口径不受影响)
-.venv/Scripts/python.exe Match_ACDL_ERA5_FromScratch.py --case 5 --vertical agl \
+.venv/Scripts/python.exe scripts/Match_ACDL_ERA5_FromScratch.py --case 5 --vertical agl \
     --out-dir D:/matchdata_agl_case5
 # 重训+评估
-.venv/Scripts/python.exe Train_ACDL_ERA5_MatchV2.py --match-dir D:/matchdata_agl_case5 \
+.venv/Scripts/python.exe scripts/Train_ACDL_ERA5_MatchV2.py --match-dir D:/matchdata_agl_case5 \
     --out-dir 结果汇总/runs/train_agl_b0 --tag AGLB0
-.venv/Scripts/python.exe evaluate_bench.py --run-dir 结果汇总/runs/train_agl_b0 --tag Holdout_AGLB0 --name AGLB0
+.venv/Scripts/python.exe scripts/evaluate_bench.py --run-dir 结果汇总/runs/train_agl_b0 --tag Holdout_AGLB0 --name AGLB0
 ```
 
 产物：`结果汇总/runs/train_agl_b0/`（bench_AGLB0.json/md + 3 图）、日志
 `结果汇总/logs/agl_match_full.log`、`agl_train_b0.log`。冒烟细节见 [AGL冒烟报告.md](AGL冒烟报告.md)。
 
-## 个例廓线对比图（2026-09-28 补充，plot_case_profiles.py）
+## 个例廓线对比图（2026-09-28 补充，scripts/plot_case_profiles.py）
 
 ![个例廓线](C:/Users/admin/Desktop/Main_ACDL_ERA5_SpatiotemporalAttention_DL/结果汇总/figures/agl_case_profiles.png)
 

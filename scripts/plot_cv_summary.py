@@ -22,7 +22,7 @@ for _s in (sys.stdout, sys.stderr):
 
 import numpy as np
 
-J = Path(__file__).resolve().parent / "结果汇总"
+J = Path(__file__).resolve().parent.parent / "结果汇总"
 C_ASL, C_AGL = "0.45", "#C44E52"
 
 

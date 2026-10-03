@@ -28,7 +28,7 @@ import Train_ACDL_ERA5_MatchV2 as T2
 
 ASL_DIR = "D:/matchdata_fixed_case5"
 AGL_DIR = "D:/matchdata_agl_case5"
-OUT = Path(__file__).resolve().parent / "结果汇总" / "figures"
+OUT = Path(__file__).resolve().parent.parent / "结果汇总" / "figures"
 SEED, HOLDOUT = 42, 0.2
 
 
